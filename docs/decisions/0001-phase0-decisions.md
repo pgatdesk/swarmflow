@@ -13,4 +13,8 @@ Date: 2026-10-25. Status: **Approved by project owner.**
 | 7 | Monitoring: **Prometheus + Grafana** | Industry-standard and resume-relevant | Custom dashboard as the primary view |
 | 8 | Scope: everything in the brief, including a cross-machine run on a second machine (owner will provide) | — | — |
 | 9 | Security scope v1: integrity only (SHA-256 manifest); no TLS or peer authentication | The four networking features are the focus | TLS with peer keys |
-| 10 | Version control: git, commits at milestones | — | — |
+| 10 | Version control: git, commits at milestones; private GitHub repo `pgatdesk/swarmflow` (public later at owner's discretion) | — | Local only; public from the start |
+| 11 | Topology and decision-log panels in Grafana via the **Infinity datasource plugin** reading `swarmflow-hub` JSON | Keeps the whole dashboard inside Grafana with no extra services | Loki for events; a separate custom web page |
+| 12 | Scenarios 8–9 (RTT, bandwidth, packet loss) also run under **real `tc netem` in WSL2**; all other scenarios use the TCP proxy | The proxy cannot produce real packet loss or reordering; netem gives real impairment for the scenarios where that matters | Proxy only, labelled as simulated |
+| 13 | Go module path `github.com/pgatdesk/swarmflow` | Matches the GitHub repo | — |
+| 14 | Phase 1 architecture ([docs/design/architecture.md](../design/architecture.md)) **approved** on 2026-10-25 | — | — |

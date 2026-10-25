@@ -1,6 +1,6 @@
 # SwarmFlow — Phase 1 Architecture (proposal, pending approval)
 
-Status: **DRAFT — awaiting approval**. Nothing in this document is implemented yet.
+Status: **Approved 2026-10-25.** This is the design; see the README and benchmark report for what is implemented and verified.
 
 Approved inputs from Phase 0 are recorded in [`docs/decisions/0001-phase0-decisions.md`](../decisions/0001-phase0-decisions.md).
 
@@ -65,7 +65,7 @@ transfer between peers that already know each other (tested).
 Byte order: big-endian. Every message after the handshake is one frame:
 
 ```
-u32 length   (length of type + payload; must be ≥ 1 and ≤ MaxFrame = 256 KiB + 64)
+u32 length   (length of type + payload; must be ≥ 1 and ≤ MaxFrame = MaxPieceSize (1 MiB) + 64)
 u8  type
 ... payload
 ```
@@ -73,12 +73,19 @@ u8  type
 Handshake (fixed 64 bytes each direction, 5 s deadline):
 
 ```
-"SWFL" magic (4) | major u8 | minor u8 | flags u16 | swarm_id [32] | peer_id [16] | listen_port u16 | reserved [4]
+"SWFL" magic (4) | major u8 | minor u8 | flags u16 | swarm_id [32] | peer_id [16] | listen_port u16 | reserved [6]
 ```
 
-Rules: different major version → send `BYE(incompatible_version)` and close; unknown minor
-features are ignored; unknown swarm ID → `BYE(unknown_swarm)`; connecting to yourself (same
-peer_id) → close. One TCP connection carries one swarm.
+Rules:
+- The initiator sends its handshake first.
+- The responder rejects by replying with its own handshake (swarm ID all zeros) followed by
+  `BYE(reason)`, then closes. Reasons: different major version → `incompatible_version`;
+  unknown swarm → `unknown_swarm`; same peer ID → `self`.
+- Unknown minor-version features are ignored.
+- The first frame on each side after the handshake must be `BITFIELD`, even when empty.
+- One TCP connection carries one swarm.
+- Simultaneous connections between the same two peers keep the one initiated by the peer with
+  the lower peer ID. Both sides apply the same rule, so they agree.
 
 | Type | Name | Payload |
 |------|------|---------|
@@ -245,8 +252,9 @@ any frame (keepalive every 10 s).
   - Serves `/api/events`: a merged event feed.
   - Monitoring failures are isolated. The API runs on its own goroutines, and event emission never
     blocks (on overflow it drops events and counts the drops).
-- **Grafana**: provisioned dashboards (JSON in `deploy/grafana/`) built on Prometheus panels, plus
-  topology and decision-log panels (see open question Q1).
+- **Grafana**: provisioned dashboards (JSON in `deploy/grafana/`) built on Prometheus panels. The
+  topology panel (Node Graph) and the decision-log table read the hub's JSON through the Infinity
+  datasource plugin (decision 0001 #11).
 
 ## 12. Test strategy
 
@@ -278,6 +286,8 @@ any frame (keepalive every 10 s).
   - Its results are labelled "application-level simulated impairment".
 
 ## 13. Repository layout
+
+Go module path: `github.com/pgatdesk/swarmflow`.
 
 ```
 cmd/swarmflow      peer CLI: make-manifest, seed, get, serve
