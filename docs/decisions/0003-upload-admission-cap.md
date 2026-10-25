@@ -41,6 +41,28 @@ Option 1.
 
 Full tables: [docs/results/sim-schedulers.md](../results/sim-schedulers.md).
 
+## Real-network validation (2026-10-26): the simulated benefit was not reproduced
+
+The cap was tested in the netem lab: scenarios 02, 11 and the extra 13-seed-departs, 70 trials
+in total ([benchmark report](../results/benchmark-report.md)).
+
+**It almost never engaged: one busy reject in total.** Seed upload queues stayed below 16
+because each downloader also had other peers to fetch from. With and without the cap, results
+were identical within noise.
+
+**In 13-seed-departs, which mirrors the simulated case, no downloader finished in either
+variant:**
+- The only seed left after uploading 1.1–1.2 copies.
+- Downloaders then shared everything among themselves, but the swarm held only 84–89% of the
+  pieces.
+
+**The cause is not queue staleness, which the cap addresses.** It is duplicate seed uploads:
+several downloaders request the same rare piece before anyone announces it, so about 1 in 6
+seed uploads was a duplicate.
+
+The cap is kept, because it is harmless and bounds seed queues by construction. The
+early-departure weakness is open; see the Phase 7 report and decision 0007.
+
 ## Consequences
 
 - One more tuning parameter, plus extra REJECT/retry traffic (measured: 121 busy rejects for

@@ -40,13 +40,13 @@
       }
     ]
   },
-  "started": "2026-10-26T00:54:03.92083335+05:30",
-  "finished": "2026-10-26T00:55:59.1862105+05:30",
+  "started": "2026-10-26T01:37:24.892158746+05:30",
+  "finished": "2026-10-26T01:39:19.56098045+05:30",
   "trials": [
     {
       "variant": "default",
       "trial": 1,
-      "wall_s": 23.930279634,
+      "wall_s": 23.65273845,
       "peers": [
         {
           "name": "s1",
@@ -55,7 +55,7 @@
           "runs": 1,
           "completed": false,
           "bytes_down": 0,
-          "bytes_up": 73924608,
+          "bytes_up": 72613888,
           "requests": 0,
           "timeouts": 0,
           "reassigned": 0,
@@ -63,8 +63,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.370145,
-          "max_rss_mib": 18.5390625
+          "cpu_s": 0.340843,
+          "max_rss_mib": 17.73828125
         },
         {
           "name": "d1",
@@ -72,12 +72,12 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 22.69713884,
-          "from_first_start_s": 22.820397944,
-          "throughput_mibps": 2.8045084996787732,
-          "time_to_first_piece_s": 8.292463564,
+          "completion_s": 23.291882701,
+          "from_first_start_s": 23.403314828,
+          "throughput_mibps": 2.7346553456363223,
+          "time_to_first_piece_s": 8.352840917,
           "bytes_down": 67108864,
-          "bytes_up": 38010880,
+          "bytes_up": 22806528,
           "requests": 256,
           "timeouts": 0,
           "reassigned": 0,
@@ -86,11 +86,11 @@
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d2": 22282240,
-            "s1": 44826624
+            "d2": 38797312,
+            "s1": 28311552
           },
-          "cpu_s": 1.331694,
-          "max_rss_mib": 18.328125
+          "cpu_s": 1.012544,
+          "max_rss_mib": 19.2890625
         },
         {
           "name": "d2",
@@ -98,12 +98,12 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 22.752644922,
-          "from_first_start_s": 22.876104316,
-          "throughput_mibps": 2.7976791465860353,
-          "time_to_first_piece_s": 8.339137534,
+          "completion_s": 23.40162091,
+          "from_first_start_s": 23.513158426,
+          "throughput_mibps": 2.7218801847237635,
+          "time_to_first_piece_s": 8.306988882,
           "bytes_down": 67108864,
-          "bytes_up": 22282240,
+          "bytes_up": 38797312,
           "requests": 256,
           "timeouts": 0,
           "reassigned": 0,
@@ -112,11 +112,11 @@
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d1": 38010880,
-            "s1": 29097984
+            "d1": 22806528,
+            "s1": 44302336
           },
-          "cpu_s": 1.147593,
-          "max_rss_mib": 18.68359375
+          "cpu_s": 1.27206,
+          "max_rss_mib": 19.19140625
         }
       ],
       "observations": [
@@ -124,20 +124,20 @@
           "kind": "first_piece_wait",
           "peer": "d1",
           "target": "-",
-          "seconds": 8.292463564
+          "seconds": 8.352840917
         },
         {
           "kind": "first_piece_wait",
           "peer": "d2",
           "target": "-",
-          "seconds": 8.339137534
+          "seconds": 8.306988882
         }
       ]
     },
     {
       "variant": "default",
       "trial": 2,
-      "wall_s": 23.483449722,
+      "wall_s": 23.322590935,
       "peers": [
         {
           "name": "s1",
@@ -146,7 +146,7 @@
           "runs": 1,
           "completed": false,
           "bytes_down": 0,
-          "bytes_up": 71827456,
+          "bytes_up": 71041024,
           "requests": 0,
           "timeouts": 0,
           "reassigned": 0,
@@ -154,8 +154,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.363947,
-          "max_rss_mib": 19.66796875
+          "cpu_s": 0.349334,
+          "max_rss_mib": 18.05859375
         },
         {
           "name": "d1",
@@ -163,12 +163,12 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 23.11198206,
-          "from_first_start_s": 23.237902744,
-          "throughput_mibps": 2.7541211745765106,
-          "time_to_first_piece_s": 8.285546967,
+          "completion_s": 21.883116102,
+          "from_first_start_s": 21.994357538,
+          "throughput_mibps": 2.90983721117683,
+          "time_to_first_piece_s": 7.23162214,
           "bytes_down": 67108864,
-          "bytes_up": 39059456,
+          "bytes_up": 31719424,
           "requests": 256,
           "timeouts": 0,
           "reassigned": 0,
@@ -177,11 +177,11 @@
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d2": 23330816,
-            "s1": 43778048
+            "d2": 31457280,
+            "s1": 35651584
           },
-          "cpu_s": 1.316589,
-          "max_rss_mib": 18.34375
+          "cpu_s": 1.114338,
+          "max_rss_mib": 19.24609375
         },
         {
           "name": "d2",
@@ -189,25 +189,25 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 23.217353678,
-          "from_first_start_s": 23.34318432,
-          "throughput_mibps": 2.741699638003801,
-          "time_to_first_piece_s": 8.331677762,
+          "completion_s": 21.992528248,
+          "from_first_start_s": 22.103912435,
+          "throughput_mibps": 2.8954150170564588,
+          "time_to_first_piece_s": 7.262265178,
           "bytes_down": 67108864,
-          "bytes_up": 23330816,
-          "requests": 256,
+          "bytes_up": 31457280,
+          "requests": 260,
           "timeouts": 0,
-          "reassigned": 0,
+          "reassigned": 4,
           "rejected_pieces": 0,
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d1": 39059456,
-            "s1": 28049408
+            "d1": 31719424,
+            "s1": 35389440
           },
-          "cpu_s": 1.01764,
-          "max_rss_mib": 18.3984375
+          "cpu_s": 1.081649,
+          "max_rss_mib": 19.49609375
         }
       ],
       "observations": [
@@ -215,20 +215,20 @@
           "kind": "first_piece_wait",
           "peer": "d1",
           "target": "-",
-          "seconds": 8.285546967
+          "seconds": 7.23162214
         },
         {
           "kind": "first_piece_wait",
           "peer": "d2",
           "target": "-",
-          "seconds": 8.331677762
+          "seconds": 7.262265178
         }
       ]
     },
     {
       "variant": "default",
       "trial": 3,
-      "wall_s": 23.834834394,
+      "wall_s": 23.892762281,
       "peers": [
         {
           "name": "s1",
@@ -237,7 +237,7 @@
           "runs": 1,
           "completed": false,
           "bytes_down": 0,
-          "bytes_up": 73400320,
+          "bytes_up": 73662464,
           "requests": 0,
           "timeouts": 0,
           "reassigned": 0,
@@ -245,8 +245,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.383523,
-          "max_rss_mib": 17.5390625
+          "cpu_s": 0.34661,
+          "max_rss_mib": 18.41796875
         },
         {
           "name": "d1",
@@ -254,25 +254,25 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 22.670968819,
-          "from_first_start_s": 22.789310511,
-          "throughput_mibps": 2.808334195503998,
-          "time_to_first_piece_s": 7.455117094,
+          "completion_s": 22.46331133,
+          "from_first_start_s": 22.576492012,
+          "throughput_mibps": 2.834807106701179,
+          "time_to_first_piece_s": 8.371831242,
           "bytes_down": 67108864,
           "bytes_up": 22544384,
-          "requests": 256,
+          "requests": 260,
           "timeouts": 0,
-          "reassigned": 0,
+          "reassigned": 4,
           "rejected_pieces": 0,
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d2": 38273024,
-            "s1": 28835840
+            "d2": 38010880,
+            "s1": 29097984
           },
-          "cpu_s": 1.054815,
-          "max_rss_mib": 18.2734375
+          "cpu_s": 1.037384,
+          "max_rss_mib": 19.48046875
         },
         {
           "name": "d2",
@@ -280,15 +280,15 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 22.560738131,
-          "from_first_start_s": 22.678779635,
-          "throughput_mibps": 2.822021335805444,
-          "time_to_first_piece_s": 7.410096216,
+          "completion_s": 22.517498975,
+          "from_first_start_s": 22.63125994,
+          "throughput_mibps": 2.8279468385620956,
+          "time_to_first_piece_s": 8.327065511,
           "bytes_down": 67108864,
-          "bytes_up": 38273024,
-          "requests": 256,
+          "bytes_up": 38010880,
+          "requests": 260,
           "timeouts": 0,
-          "reassigned": 0,
+          "reassigned": 4,
           "rejected_pieces": 0,
           "banned": 0,
           "endgame_requests": 0,
@@ -297,8 +297,8 @@
             "d1": 22544384,
             "s1": 44564480
           },
-          "cpu_s": 1.304406,
-          "max_rss_mib": 18.55859375
+          "cpu_s": 1.274313,
+          "max_rss_mib": 18.640625
         }
       ],
       "observations": [
@@ -306,20 +306,20 @@
           "kind": "first_piece_wait",
           "peer": "d1",
           "target": "-",
-          "seconds": 7.455117094
+          "seconds": 8.371831242
         },
         {
           "kind": "first_piece_wait",
           "peer": "d2",
           "target": "-",
-          "seconds": 7.410096216
+          "seconds": 8.327065511
         }
       ]
     },
     {
       "variant": "default",
       "trial": 4,
-      "wall_s": 23.82805207,
+      "wall_s": 23.544217814,
       "peers": [
         {
           "name": "s1",
@@ -328,7 +328,7 @@
           "runs": 1,
           "completed": false,
           "bytes_down": 0,
-          "bytes_up": 73400320,
+          "bytes_up": 72089600,
           "requests": 0,
           "timeouts": 0,
           "reassigned": 0,
@@ -336,8 +336,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.360042,
-          "max_rss_mib": 18.703125
+          "cpu_s": 0.356488,
+          "max_rss_mib": 17.515625
         },
         {
           "name": "d1",
@@ -345,25 +345,25 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 22.595020502,
-          "from_first_start_s": 22.769486342,
-          "throughput_mibps": 2.8107792612759677,
-          "time_to_first_piece_s": 8.29220333,
+          "completion_s": 22.318940329,
+          "from_first_start_s": 22.432090778,
+          "throughput_mibps": 2.853055501307405,
+          "time_to_first_piece_s": 8.343558135,
           "bytes_down": 67108864,
-          "bytes_up": 22544384,
-          "requests": 256,
+          "bytes_up": 30932992,
+          "requests": 260,
           "timeouts": 0,
-          "reassigned": 0,
+          "reassigned": 4,
           "rejected_pieces": 0,
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d2": 38273024,
-            "s1": 28835840
+            "d2": 31195136,
+            "s1": 35913728
           },
-          "cpu_s": 1.041008,
-          "max_rss_mib": 18.02734375
+          "cpu_s": 1.079031,
+          "max_rss_mib": 19.19140625
         },
         {
           "name": "d2",
@@ -371,12 +371,12 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 22.485218352,
-          "from_first_start_s": 22.660227356,
-          "throughput_mibps": 2.824331768368335,
-          "time_to_first_piece_s": 8.244690826,
+          "completion_s": 22.263808723,
+          "from_first_start_s": 22.376956563,
+          "throughput_mibps": 2.8600850978020462,
+          "time_to_first_piece_s": 8.31439211,
           "bytes_down": 67108864,
-          "bytes_up": 38273024,
+          "bytes_up": 31195136,
           "requests": 256,
           "timeouts": 0,
           "reassigned": 0,
@@ -385,11 +385,11 @@
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d1": 22544384,
-            "s1": 44564480
+            "d1": 30932992,
+            "s1": 36175872
           },
-          "cpu_s": 1.3231060000000001,
-          "max_rss_mib": 17.984375
+          "cpu_s": 1.129612,
+          "max_rss_mib": 19.109375
         }
       ],
       "observations": [
@@ -397,20 +397,20 @@
           "kind": "first_piece_wait",
           "peer": "d1",
           "target": "-",
-          "seconds": 8.29220333
+          "seconds": 8.343558135
         },
         {
           "kind": "first_piece_wait",
           "peer": "d2",
           "target": "-",
-          "seconds": 8.244690826
+          "seconds": 8.31439211
         }
       ]
     },
     {
       "variant": "default",
       "trial": 5,
-      "wall_s": 23.819135171,
+      "wall_s": 23.440870561,
       "peers": [
         {
           "name": "s1",
@@ -419,7 +419,7 @@
           "runs": 1,
           "completed": false,
           "bytes_down": 0,
-          "bytes_up": 73400320,
+          "bytes_up": 71565312,
           "requests": 0,
           "timeouts": 0,
           "reassigned": 0,
@@ -427,8 +427,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.37945,
-          "max_rss_mib": 17.75
+          "cpu_s": 0.352472,
+          "max_rss_mib": 17.42578125
         },
         {
           "name": "d1",
@@ -436,12 +436,12 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 22.595258368,
-          "from_first_start_s": 22.715607594,
-          "throughput_mibps": 2.8174460989062284,
-          "time_to_first_piece_s": 8.284470193,
+          "completion_s": 23.1867125,
+          "from_first_start_s": 23.306492154,
+          "throughput_mibps": 2.74601598460693,
+          "time_to_first_piece_s": 8.3146212,
           "bytes_down": 67108864,
-          "bytes_up": 42205184,
+          "bytes_up": 32505856,
           "requests": 256,
           "timeouts": 0,
           "reassigned": 0,
@@ -450,11 +450,11 @@
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d2": 18612224,
-            "s1": 48496640
+            "d2": 30146560,
+            "s1": 36962304
           },
-          "cpu_s": 1.422951,
-          "max_rss_mib": 18.46875
+          "cpu_s": 1.192765,
+          "max_rss_mib": 18.84765625
         },
         {
           "name": "d2",
@@ -462,25 +462,25 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 22.650807854,
-          "from_first_start_s": 22.770824082,
-          "throughput_mibps": 2.8106141336619896,
-          "time_to_first_piece_s": 8.379942958,
+          "completion_s": 23.076773095,
+          "from_first_start_s": 23.19631084,
+          "throughput_mibps": 2.7590594229164074,
+          "time_to_first_piece_s": 8.343909617,
           "bytes_down": 67108864,
-          "bytes_up": 18612224,
-          "requests": 256,
+          "bytes_up": 30146560,
+          "requests": 260,
           "timeouts": 0,
-          "reassigned": 0,
+          "reassigned": 4,
           "rejected_pieces": 0,
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
           "sources": {
-            "d1": 42205184,
-            "s1": 24903680
+            "d1": 32505856,
+            "s1": 34603008
           },
-          "cpu_s": 1.19385,
-          "max_rss_mib": 18.5546875
+          "cpu_s": 1.073514,
+          "max_rss_mib": 19.64453125
         }
       ],
       "observations": [
@@ -488,13 +488,13 @@
           "kind": "first_piece_wait",
           "peer": "d1",
           "target": "-",
-          "seconds": 8.284470193
+          "seconds": 8.3146212
         },
         {
           "kind": "first_piece_wait",
           "peer": "d2",
           "target": "-",
-          "seconds": 8.379942958
+          "seconds": 8.343909617
         }
       ]
     }

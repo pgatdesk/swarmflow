@@ -32,13 +32,13 @@
       }
     ]
   },
-  "started": "2026-10-25T22:31:44.281571601+05:30",
-  "finished": "2026-10-25T22:32:47.268795827+05:30",
+  "started": "2026-10-26T01:02:40.423284491+05:30",
+  "finished": "2026-10-26T01:03:43.301167118+05:30",
   "trials": [
     {
       "variant": "default",
       "trial": 1,
-      "wall_s": 12.810992993,
+      "wall_s": 12.874719187,
       "peers": [
         {
           "name": "s1",
@@ -55,8 +55,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.536937,
-          "max_rss_mib": 16.55859375
+          "cpu_s": 0.601819,
+          "max_rss_mib": 23.85546875
         },
         {
           "name": "d1",
@@ -64,10 +64,10 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 11.490525978,
-          "from_first_start_s": 11.67549534,
-          "throughput_mibps": 5.481566146554601,
-          "time_to_first_piece_s": 0.309619575,
+          "completion_s": 11.517262383,
+          "from_first_start_s": 11.691495086,
+          "throughput_mibps": 5.47406465377015,
+          "time_to_first_piece_s": 0.345483717,
           "bytes_down": 67108864,
           "bytes_up": 0,
           "requests": 256,
@@ -80,15 +80,15 @@
           "sources": {
             "s1": 67108864
           },
-          "cpu_s": 1.422421,
-          "max_rss_mib": 18.47265625
+          "cpu_s": 1.136346,
+          "max_rss_mib": 19.34375
         }
       ]
     },
     {
       "variant": "default",
       "trial": 2,
-      "wall_s": 12.642331298,
+      "wall_s": 12.640183636,
       "peers": [
         {
           "name": "s1",
@@ -105,8 +105,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.346065,
-          "max_rss_mib": 16.81640625
+          "cpu_s": 0.313318,
+          "max_rss_mib": 16.69921875
         },
         {
           "name": "d1",
@@ -114,10 +114,10 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 11.479803807,
-          "from_first_start_s": 11.526922793,
-          "throughput_mibps": 5.55221902231058,
-          "time_to_first_piece_s": 0.295226389,
+          "completion_s": 11.478024577,
+          "from_first_start_s": 11.528013179,
+          "throughput_mibps": 5.551693861400642,
+          "time_to_first_piece_s": 0.291775045,
           "bytes_down": 67108864,
           "bytes_up": 0,
           "requests": 256,
@@ -130,15 +130,15 @@
           "sources": {
             "s1": 67108864
           },
-          "cpu_s": 0.976717,
-          "max_rss_mib": 17.9296875
+          "cpu_s": 0.870809,
+          "max_rss_mib": 18.90625
         }
       ]
     },
     {
       "variant": "default",
       "trial": 3,
-      "wall_s": 12.656389958,
+      "wall_s": 12.637097406,
       "peers": [
         {
           "name": "s1",
@@ -155,8 +155,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.333085,
-          "max_rss_mib": 16.4765625
+          "cpu_s": 0.322333,
+          "max_rss_mib": 16.37109375
         },
         {
           "name": "d1",
@@ -164,10 +164,10 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 11.064508597,
-          "from_first_start_s": 11.110559033,
-          "throughput_mibps": 5.7602862115138,
-          "time_to_first_piece_s": 0.294400934,
+          "completion_s": 11.479113312,
+          "from_first_start_s": 11.525816884,
+          "throughput_mibps": 5.5527517610351795,
+          "time_to_first_piece_s": 0.292951321,
           "bytes_down": 67108864,
           "bytes_up": 0,
           "requests": 256,
@@ -180,15 +180,15 @@
           "sources": {
             "s1": 67108864
           },
-          "cpu_s": 0.981073,
-          "max_rss_mib": 18.13671875
+          "cpu_s": 0.863884,
+          "max_rss_mib": 19.08203125
         }
       ]
     },
     {
       "variant": "default",
       "trial": 4,
-      "wall_s": 12.65219078,
+      "wall_s": 12.638574802,
       "peers": [
         {
           "name": "s1",
@@ -205,8 +205,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.349023,
-          "max_rss_mib": 16.6171875
+          "cpu_s": 0.321196,
+          "max_rss_mib": 17.38671875
         },
         {
           "name": "d1",
@@ -214,10 +214,10 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 11.478042162,
-          "from_first_start_s": 11.524495955,
-          "throughput_mibps": 5.553388213237478,
-          "time_to_first_piece_s": 0.291971032,
+          "completion_s": 11.478904804999999,
+          "from_first_start_s": 11.5243755,
+          "throughput_mibps": 5.5534462583243664,
+          "time_to_first_piece_s": 0.294285214,
           "bytes_down": 67108864,
           "bytes_up": 0,
           "requests": 256,
@@ -230,15 +230,15 @@
           "sources": {
             "s1": 67108864
           },
-          "cpu_s": 0.995855,
-          "max_rss_mib": 18.640625
+          "cpu_s": 0.882657,
+          "max_rss_mib": 19.01953125
         }
       ]
     },
     {
       "variant": "default",
       "trial": 5,
-      "wall_s": 12.650307325,
+      "wall_s": 12.634726323,
       "peers": [
         {
           "name": "s1",
@@ -255,8 +255,8 @@
           "banned": 0,
           "endgame_requests": 0,
           "busy_received": 0,
-          "cpu_s": 0.342414,
-          "max_rss_mib": 16.71875
+          "cpu_s": 0.324474,
+          "max_rss_mib": 16.859375
         },
         {
           "name": "d1",
@@ -264,10 +264,10 @@
           "exit": "ok",
           "runs": 1,
           "completed": true,
-          "completion_s": 11.478283622,
-          "from_first_start_s": 11.529800932,
-          "throughput_mibps": 5.550833043645476,
-          "time_to_first_piece_s": 0.293450246,
+          "completion_s": 10.933197233,
+          "from_first_start_s": 10.975855646,
+          "throughput_mibps": 5.830980477893213,
+          "time_to_first_piece_s": 0.294893604,
           "bytes_down": 67108864,
           "bytes_up": 0,
           "requests": 256,
@@ -280,8 +280,8 @@
           "sources": {
             "s1": 67108864
           },
-          "cpu_s": 1.011343,
-          "max_rss_mib": 18.13671875
+          "cpu_s": 0.880215,
+          "max_rss_mib": 18.8359375
         }
       ]
     }

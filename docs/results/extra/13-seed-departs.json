@@ -1,0 +1,3661 @@
+{
+  "scenario": {
+    "name": "13-seed-departs",
+    "description": "Extra (validates decision 0003 on a real network): one 40 Mbit/s seed and eight downloaders with 10 Mbit/s uplinks. The seed leaves after 20 s (about 1.5 copies uploaded); downloaders can only finish if, between them, they already hold every piece. In simulation, without the upload admission cap, no downloader finished.",
+    "file_size": "64MiB",
+    "piece_size": "256KiB",
+    "data_seed": 31,
+    "timeout": "2m30s",
+    "peers": [
+      {
+        "name": "s1",
+        "role": "seed",
+        "link": {
+          "rate": "40mbit",
+          "delay": "10ms"
+        }
+      },
+      {
+        "name": "d1",
+        "role": "get",
+        "link": {
+          "rate": "10mbit",
+          "delay": "5ms"
+        },
+        "start_at": "1s"
+      },
+      {
+        "name": "d2",
+        "role": "get",
+        "link": {
+          "rate": "10mbit",
+          "delay": "10ms"
+        },
+        "start_at": "1s"
+      },
+      {
+        "name": "d3",
+        "role": "get",
+        "link": {
+          "rate": "10mbit",
+          "delay": "15ms"
+        },
+        "start_at": "1s"
+      },
+      {
+        "name": "d4",
+        "role": "get",
+        "link": {
+          "rate": "10mbit",
+          "delay": "20ms"
+        },
+        "start_at": "1s"
+      },
+      {
+        "name": "d5",
+        "role": "get",
+        "link": {
+          "rate": "10mbit",
+          "delay": "25ms"
+        },
+        "start_at": "1s"
+      },
+      {
+        "name": "d6",
+        "role": "get",
+        "link": {
+          "rate": "10mbit",
+          "delay": "30ms"
+        },
+        "start_at": "1s"
+      },
+      {
+        "name": "d7",
+        "role": "get",
+        "link": {
+          "rate": "10mbit",
+          "delay": "35ms"
+        },
+        "start_at": "1s"
+      },
+      {
+        "name": "d8",
+        "role": "get",
+        "link": {
+          "rate": "10mbit",
+          "delay": "40ms"
+        },
+        "start_at": "1s"
+      }
+    ],
+    "events": [
+      {
+        "at": "20s",
+        "peer": "s1",
+        "action": "stop"
+      }
+    ],
+    "variants": [
+      {
+        "name": "cap16",
+        "args": [],
+        "role_args": {
+          "*": [
+            "-upload-queue",
+            "16"
+          ]
+        }
+      },
+      {
+        "name": "no-cap",
+        "args": [],
+        "role_args": {
+          "*": [
+            "-upload-queue",
+            "0"
+          ]
+        }
+      }
+    ]
+  },
+  "started": "2026-10-26T01:39:19.705037941+05:30",
+  "finished": "2026-10-26T02:03:36.834971456+05:30",
+  "trials": [
+    {
+      "variant": "cap16",
+      "trial": 1,
+      "wall_s": 150.332411347,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 83099648,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.368376,
+          "max_rss_mib": 23.140625
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.420766873,
+          "bytes_down": 58982400,
+          "bytes_up": 57147392,
+          "requests": 259,
+          "timeouts": 31,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d2": 6291456,
+            "d3": 5242880,
+            "d4": 9961472,
+            "d5": 11010048,
+            "d6": 5505024,
+            "d7": 6291456,
+            "d8": 2883584,
+            "s1": 11796480
+          },
+          "cpu_s": 2.057328,
+          "max_rss_mib": 27.203125
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.506621906,
+          "bytes_down": 58982400,
+          "bytes_up": 58195968,
+          "requests": 254,
+          "timeouts": 25,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7864320,
+            "d3": 2359296,
+            "d4": 5505024,
+            "d5": 10223616,
+            "d6": 8126464,
+            "d7": 8650752,
+            "d8": 4456448,
+            "s1": 11796480
+          },
+          "cpu_s": 2.010895,
+          "max_rss_mib": 29.47265625
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.605855895,
+          "bytes_down": 58982400,
+          "bytes_up": 53739520,
+          "requests": 260,
+          "timeouts": 32,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9437184,
+            "d2": 8388608,
+            "d4": 8126464,
+            "d5": 2359296,
+            "d6": 7077888,
+            "d7": 7340032,
+            "d8": 2097152,
+            "s1": 14155776
+          },
+          "cpu_s": 2.1135099999999998,
+          "max_rss_mib": 28.97265625
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.173885646,
+          "bytes_down": 58982400,
+          "bytes_up": 52428800,
+          "requests": 245,
+          "timeouts": 10,
+          "reassigned": 7,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9961472,
+            "d2": 6815744,
+            "d3": 9699328,
+            "d5": 7602176,
+            "d6": 4194304,
+            "d7": 5767168,
+            "d8": 6553600,
+            "s1": 8388608
+          },
+          "cpu_s": 1.986128,
+          "max_rss_mib": 25.9375
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.006229256,
+          "bytes_down": 58982400,
+          "bytes_up": 55836672,
+          "requests": 243,
+          "timeouts": 11,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9437184,
+            "d2": 8912896,
+            "d3": 7340032,
+            "d4": 6029312,
+            "d6": 4718592,
+            "d7": 6029312,
+            "d8": 6553600,
+            "s1": 9961472
+          },
+          "cpu_s": 1.945883,
+          "max_rss_mib": 29.796875
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.286346731,
+          "bytes_down": 58982400,
+          "bytes_up": 51642368,
+          "requests": 244,
+          "timeouts": 9,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 6,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6815744,
+            "d2": 9437184,
+            "d3": 7864320,
+            "d4": 5767168,
+            "d5": 7077888,
+            "d7": 3145728,
+            "d8": 10747904,
+            "s1": 8126464
+          },
+          "cpu_s": 1.9177300000000002,
+          "max_rss_mib": 27.4375
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.443773232,
+          "bytes_down": 58982400,
+          "bytes_up": 50331648,
+          "requests": 235,
+          "timeouts": 0,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 6,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7602176,
+            "d2": 8126464,
+            "d3": 9437184,
+            "d4": 6291456,
+            "d5": 7340032,
+            "d6": 4718592,
+            "d8": 7077888,
+            "s1": 8388608
+          },
+          "cpu_s": 1.9182169999999998,
+          "max_rss_mib": 27.56640625
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.546117084,
+          "bytes_down": 58982400,
+          "bytes_up": 48496640,
+          "requests": 236,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 11,
+          "busy_received": 0,
+          "sources": {
+            "d1": 5767168,
+            "d2": 7340032,
+            "d3": 6553600,
+            "d4": 7340032,
+            "d5": 6815744,
+            "d6": 9961472,
+            "d7": 6553600,
+            "s1": 8650752
+          },
+          "cpu_s": 1.962155,
+          "max_rss_mib": 27.66796875
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:39:39.008420521+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 1.6069425750000002
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 2.338658488
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 1.27677032
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 0.629004081
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 1.289960552
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 0.668947843
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 1.376747656
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 1.032724612
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.506621906
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.605855895
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 1.173885646
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.006229256
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.286346731
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.443773232
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.546117084
+        }
+      ]
+    },
+    {
+      "variant": "no-cap",
+      "trial": 1,
+      "wall_s": 150.335782226,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 81264640,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.380897,
+          "max_rss_mib": 25.08984375
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.41824874,
+          "bytes_down": 56098816,
+          "bytes_up": 54001664,
+          "requests": 244,
+          "timeouts": 22,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d2": 4194304,
+            "d3": 2359296,
+            "d4": 7864320,
+            "d5": 9437184,
+            "d6": 8650752,
+            "d7": 7602176,
+            "d8": 6291456,
+            "s1": 9699328
+          },
+          "cpu_s": 1.889841,
+          "max_rss_mib": 25.48828125
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.503473954,
+          "bytes_down": 56098816,
+          "bytes_up": 53215232,
+          "requests": 241,
+          "timeouts": 23,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6553600,
+            "d3": 5242880,
+            "d4": 6553600,
+            "d5": 7864320,
+            "d6": 6029312,
+            "d7": 6291456,
+            "d8": 4718592,
+            "s1": 12845056
+          },
+          "cpu_s": 1.982963,
+          "max_rss_mib": 27.609375
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.599070537,
+          "bytes_down": 56098816,
+          "bytes_up": 48234496,
+          "requests": 249,
+          "timeouts": 30,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 1,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8650752,
+            "d2": 8126464,
+            "d4": 3932160,
+            "d5": 5242880,
+            "d6": 9175040,
+            "d7": 4456448,
+            "d8": 2359296,
+            "s1": 14155776
+          },
+          "cpu_s": 1.94442,
+          "max_rss_mib": 28.9140625
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.101422044,
+          "bytes_down": 56098816,
+          "bytes_up": 51642368,
+          "requests": 233,
+          "timeouts": 5,
+          "reassigned": 8,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 6,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7340032,
+            "d2": 8126464,
+            "d3": 5767168,
+            "d5": 7602176,
+            "d6": 6815744,
+            "d7": 4194304,
+            "d8": 8388608,
+            "s1": 7864320
+          },
+          "cpu_s": 1.874869,
+          "max_rss_mib": 28.05078125
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.085342947,
+          "bytes_down": 56098816,
+          "bytes_up": 50855936,
+          "requests": 236,
+          "timeouts": 7,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 11,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9175040,
+            "d2": 7602176,
+            "d3": 7340032,
+            "d4": 8126464,
+            "d6": 5242880,
+            "d7": 6291456,
+            "d8": 4980736,
+            "s1": 7340032
+          },
+          "cpu_s": 1.88443,
+          "max_rss_mib": 26.98046875
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.199612071,
+          "bytes_down": 56098816,
+          "bytes_up": 51380224,
+          "requests": 226,
+          "timeouts": 6,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7864320,
+            "d2": 7602176,
+            "d3": 8650752,
+            "d4": 6815744,
+            "d5": 6291456,
+            "d7": 5767168,
+            "d8": 5242880,
+            "s1": 7864320
+          },
+          "cpu_s": 1.8565239999999998,
+          "max_rss_mib": 26.99609375
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.310700872,
+          "bytes_down": 56098816,
+          "bytes_up": 48758784,
+          "requests": 226,
+          "timeouts": 2,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 6,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6815744,
+            "d2": 8126464,
+            "d3": 7602176,
+            "d4": 4980736,
+            "d5": 6553600,
+            "d6": 6553600,
+            "d8": 7077888,
+            "s1": 8388608
+          },
+          "cpu_s": 1.8752140000000002,
+          "max_rss_mib": 28.015625
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.4328525810000001,
+          "bytes_down": 56098816,
+          "bytes_up": 47185920,
+          "requests": 223,
+          "timeouts": 0,
+          "reassigned": 6,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6553600,
+            "d2": 7077888,
+            "d3": 5767168,
+            "d4": 8912896,
+            "d5": 5767168,
+            "d6": 5505024,
+            "d7": 8126464,
+            "s1": 8388608
+          },
+          "cpu_s": 1.775814,
+          "max_rss_mib": 29.359375
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:42:04.272874921+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 3.245850494
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 1.523287336
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 3.469870762
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 1.62456504
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 1.240473242
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 0.575968493
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 0.901526868
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 1.128631612
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.503473954
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.599070537
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 1.101422044
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.085342947
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.199612071
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.310700872
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.4328525810000001
+        }
+      ]
+    },
+    {
+      "variant": "cap16",
+      "trial": 2,
+      "wall_s": 150.363577054,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 83099648,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.379207,
+          "max_rss_mib": 25.22265625
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.422206642,
+          "bytes_down": 59506688,
+          "bytes_up": 58720256,
+          "requests": 263,
+          "timeouts": 27,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d2": 8912896,
+            "d3": 4718592,
+            "d4": 10747904,
+            "d5": 8388608,
+            "d6": 6029312,
+            "d7": 4194304,
+            "d8": 4980736,
+            "s1": 11534336
+          },
+          "cpu_s": 2.080223,
+          "max_rss_mib": 29.86328125
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.630585448,
+          "bytes_down": 59506688,
+          "bytes_up": 58195968,
+          "requests": 269,
+          "timeouts": 37,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 1,
+          "busy_received": 0,
+          "sources": {
+            "d1": 11272192,
+            "d3": 10485760,
+            "d4": 2621440,
+            "d5": 11010048,
+            "d6": 4718592,
+            "d7": 2359296,
+            "d8": 5767168,
+            "s1": 11272192
+          },
+          "cpu_s": 1.9998040000000001,
+          "max_rss_mib": 27.94140625
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.638428754,
+          "bytes_down": 59506688,
+          "bytes_up": 57409536,
+          "requests": 258,
+          "timeouts": 26,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 1,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7864320,
+            "d2": 10223616,
+            "d4": 1835008,
+            "d5": 11010048,
+            "d6": 7077888,
+            "d7": 5242880,
+            "d8": 2621440,
+            "s1": 13631488
+          },
+          "cpu_s": 2.096261,
+          "max_rss_mib": 30.33203125
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.770909111,
+          "bytes_down": 59506688,
+          "bytes_up": 54788096,
+          "requests": 240,
+          "timeouts": 9,
+          "reassigned": 1,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 10747904,
+            "d2": 5505024,
+            "d3": 4456448,
+            "d5": 7340032,
+            "d6": 7077888,
+            "d7": 7602176,
+            "d8": 5242880,
+            "s1": 11534336
+          },
+          "cpu_s": 2.019183,
+          "max_rss_mib": 29.453125
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.213426016,
+          "bytes_down": 59506688,
+          "bytes_up": 57147392,
+          "requests": 246,
+          "timeouts": 13,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 2,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9175040,
+            "d2": 10485760,
+            "d3": 9961472,
+            "d4": 8126464,
+            "d6": 6553600,
+            "d7": 1048576,
+            "d8": 5767168,
+            "s1": 8388608
+          },
+          "cpu_s": 2.008849,
+          "max_rss_mib": 24.78515625
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.413551922,
+          "bytes_down": 59506688,
+          "bytes_up": 54001664,
+          "requests": 241,
+          "timeouts": 5,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6815744,
+            "d2": 6815744,
+            "d3": 7864320,
+            "d4": 8650752,
+            "d5": 5767168,
+            "d7": 7602176,
+            "d8": 7602176,
+            "s1": 8388608
+          },
+          "cpu_s": 1.992944,
+          "max_rss_mib": 25.10546875
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.532391066,
+          "bytes_down": 59506688,
+          "bytes_up": 45350912,
+          "requests": 239,
+          "timeouts": 3,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 5767168,
+            "d2": 6291456,
+            "d3": 7602176,
+            "d4": 9699328,
+            "d5": 5505024,
+            "d6": 8650752,
+            "d8": 6029312,
+            "s1": 9961472
+          },
+          "cpu_s": 1.9285999999999999,
+          "max_rss_mib": 27.20703125
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.683069958,
+          "bytes_down": 59506688,
+          "bytes_up": 47710208,
+          "requests": 242,
+          "timeouts": 0,
+          "reassigned": 6,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 9,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6029312,
+            "d2": 8126464,
+            "d3": 8912896,
+            "d4": 7077888,
+            "d5": 6029312,
+            "d6": 8912896,
+            "d7": 7077888,
+            "s1": 7340032
+          },
+          "cpu_s": 1.961225,
+          "max_rss_mib": 26.47265625
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:44:30.01983676+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 2.292273912
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 0.361017241
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 1.13849421
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 2.386814903
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 2.387191787
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 1.938146273
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 2.919141516
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 0.08903537
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.630585448
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.638428754
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 0.770909111
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.213426016
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.413551922
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.532391066
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.683069958
+        }
+      ]
+    },
+    {
+      "variant": "no-cap",
+      "trial": 2,
+      "wall_s": 150.35325309,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 82051072,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.366125,
+          "max_rss_mib": 23.96484375
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.415997088,
+          "bytes_down": 57147392,
+          "bytes_up": 53739520,
+          "requests": 256,
+          "timeouts": 32,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d2": 5242880,
+            "d3": 1310720,
+            "d4": 9437184,
+            "d5": 10485760,
+            "d6": 9437184,
+            "d7": 4456448,
+            "d8": 4718592,
+            "s1": 12058624
+          },
+          "cpu_s": 1.923724,
+          "max_rss_mib": 26.390625
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.503361333,
+          "bytes_down": 57147392,
+          "bytes_up": 52953088,
+          "requests": 241,
+          "timeouts": 17,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 2,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7864320,
+            "d3": 524288,
+            "d4": 7340032,
+            "d5": 8126464,
+            "d6": 8126464,
+            "d7": 8126464,
+            "d8": 6553600,
+            "s1": 10485760
+          },
+          "cpu_s": 1.866346,
+          "max_rss_mib": 26.23046875
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.59857513,
+          "bytes_down": 57147392,
+          "bytes_up": 48758784,
+          "requests": 245,
+          "timeouts": 21,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 2,
+          "busy_received": 0,
+          "sources": {
+            "d1": 5505024,
+            "d2": 4980736,
+            "d4": 7077888,
+            "d5": 6553600,
+            "d6": 7864320,
+            "d7": 6291456,
+            "d8": 5242880,
+            "s1": 13631488
+          },
+          "cpu_s": 1.98014,
+          "max_rss_mib": 29.32421875
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.132008368,
+          "bytes_down": 57147392,
+          "bytes_up": 52690944,
+          "requests": 236,
+          "timeouts": 7,
+          "reassigned": 8,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8650752,
+            "d2": 7602176,
+            "d3": 8650752,
+            "d5": 7864320,
+            "d6": 4456448,
+            "d7": 7077888,
+            "d8": 3932160,
+            "s1": 8912896
+          },
+          "cpu_s": 1.833761,
+          "max_rss_mib": 26.0546875
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.094694632,
+          "bytes_down": 57147392,
+          "bytes_up": 52953088,
+          "requests": 229,
+          "timeouts": 5,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 2,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8912896,
+            "d2": 8126464,
+            "d3": 7340032,
+            "d4": 8126464,
+            "d6": 4456448,
+            "d7": 4980736,
+            "d8": 6553600,
+            "s1": 8650752
+          },
+          "cpu_s": 1.799949,
+          "max_rss_mib": 26.0078125
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.259883623,
+          "bytes_down": 57147392,
+          "bytes_up": 51380224,
+          "requests": 235,
+          "timeouts": 6,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 7,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9175040,
+            "d2": 8650752,
+            "d3": 8912896,
+            "d4": 5767168,
+            "d5": 4980736,
+            "d7": 6291456,
+            "d8": 4980736,
+            "s1": 8388608
+          },
+          "cpu_s": 1.853051,
+          "max_rss_mib": 28.23046875
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.3835311639999999,
+          "bytes_down": 57147392,
+          "bytes_up": 47972352,
+          "requests": 228,
+          "timeouts": 3,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6553600,
+            "d2": 8650752,
+            "d3": 7340032,
+            "d4": 7602176,
+            "d5": 5767168,
+            "d6": 7077888,
+            "d8": 6029312,
+            "s1": 8126464
+          },
+          "cpu_s": 1.8326630000000002,
+          "max_rss_mib": 27.48046875
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.50888992,
+          "bytes_down": 57147392,
+          "bytes_up": 45875200,
+          "requests": 227,
+          "timeouts": 0,
+          "reassigned": 5,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6553600,
+            "d2": 7864320,
+            "d3": 8650752,
+            "d4": 5505024,
+            "d5": 7340032,
+            "d6": 6029312,
+            "d7": 6291456,
+            "s1": 8912896
+          },
+          "cpu_s": 1.846595,
+          "max_rss_mib": 31.078125
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:46:56.293018072+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 2.828480698
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 1.866690373
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 1.395045174
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 2.294388278
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 2.081621934
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 2.129935126
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 1.337903987
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 1.642703493
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.503361333
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.59857513
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 1.132008368
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.094694632
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.259883623
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.3835311639999999
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.50888992
+        }
+      ]
+    },
+    {
+      "variant": "cap16",
+      "trial": 3,
+      "wall_s": 150.344566224,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 82575360,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.360638,
+          "max_rss_mib": 25.6328125
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.41709795,
+          "bytes_down": 56623104,
+          "bytes_up": 58195968,
+          "requests": 253,
+          "timeouts": 31,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 2,
+          "busy_received": 0,
+          "sources": {
+            "d2": 7602176,
+            "d3": 8388608,
+            "d4": 6815744,
+            "d5": 7864320,
+            "d6": 8126464,
+            "d7": 2097152,
+            "d8": 4194304,
+            "s1": 11534336
+          },
+          "cpu_s": 1.9305189999999999,
+          "max_rss_mib": 26.41015625
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.506302566,
+          "bytes_down": 56623104,
+          "bytes_up": 56623104,
+          "requests": 244,
+          "timeouts": 20,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8388608,
+            "d3": 786432,
+            "d4": 9961472,
+            "d5": 8650752,
+            "d6": 5505024,
+            "d7": 8126464,
+            "d8": 3932160,
+            "s1": 11272192
+          },
+          "cpu_s": 1.938418,
+          "max_rss_mib": 25.4296875
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.598310493,
+          "bytes_down": 56623104,
+          "bytes_up": 47972352,
+          "requests": 254,
+          "timeouts": 31,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 11272192,
+            "d2": 4718592,
+            "d4": 7077888,
+            "d5": 3932160,
+            "d6": 6029312,
+            "d7": 4456448,
+            "d8": 4980736,
+            "s1": 14155776
+          },
+          "cpu_s": 1.8607200000000002,
+          "max_rss_mib": 31.9453125
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.141547553,
+          "bytes_down": 56623104,
+          "bytes_up": 53739520,
+          "requests": 241,
+          "timeouts": 12,
+          "reassigned": 8,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7340032,
+            "d2": 10223616,
+            "d3": 8388608,
+            "d5": 7864320,
+            "d6": 4980736,
+            "d7": 3407872,
+            "d8": 6553600,
+            "s1": 7864320
+          },
+          "cpu_s": 1.7821820000000002,
+          "max_rss_mib": 28.1640625
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.093963675,
+          "bytes_down": 56623104,
+          "bytes_up": 49807360,
+          "requests": 239,
+          "timeouts": 14,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8650752,
+            "d2": 8912896,
+            "d3": 5767168,
+            "d4": 8650752,
+            "d6": 5505024,
+            "d7": 5505024,
+            "d8": 5767168,
+            "s1": 7864320
+          },
+          "cpu_s": 1.748392,
+          "max_rss_mib": 25.94921875
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.225426036,
+          "bytes_down": 56623104,
+          "bytes_up": 51904512,
+          "requests": 229,
+          "timeouts": 6,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8126464,
+            "d2": 7077888,
+            "d3": 7340032,
+            "d4": 6291456,
+            "d5": 5505024,
+            "d7": 6553600,
+            "d8": 6291456,
+            "s1": 9437184
+          },
+          "cpu_s": 1.790261,
+          "max_rss_mib": 28.68359375
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.381452333,
+          "bytes_down": 56623104,
+          "bytes_up": 46923776,
+          "requests": 227,
+          "timeouts": 0,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 8,
+          "busy_received": 0,
+          "sources": {
+            "d1": 5242880,
+            "d2": 8388608,
+            "d3": 6291456,
+            "d4": 5242880,
+            "d5": 6553600,
+            "d6": 8388608,
+            "d8": 8912896,
+            "s1": 7602176
+          },
+          "cpu_s": 1.771833,
+          "max_rss_mib": 27.83984375
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.464598975,
+          "bytes_down": 56623104,
+          "bytes_up": 49020928,
+          "requests": 234,
+          "timeouts": 0,
+          "reassigned": 6,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 12,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6029312,
+            "d2": 6291456,
+            "d3": 6029312,
+            "d4": 7340032,
+            "d5": 7077888,
+            "d6": 7340032,
+            "d7": 8388608,
+            "s1": 8126464
+          },
+          "cpu_s": 1.7943959999999999,
+          "max_rss_mib": 28.15625
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:49:21.551491322+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 2.4533106
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 2.729704698
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 1.476540874
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 1.559208342
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 1.943715855
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 0.978928336
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 0.853828625
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 2.041539079
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.506302566
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.598310493
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 1.141547553
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.093963675
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.225426036
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.381452333
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.464598975
+        }
+      ]
+    },
+    {
+      "variant": "no-cap",
+      "trial": 3,
+      "wall_s": 150.34016675,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 82837504,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.379794,
+          "max_rss_mib": 24.36328125
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.415853228,
+          "bytes_down": 57671680,
+          "bytes_up": 55312384,
+          "requests": 265,
+          "timeouts": 33,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 8,
+          "busy_received": 0,
+          "sources": {
+            "d2": 5242880,
+            "d3": 6815744,
+            "d4": 10747904,
+            "d5": 6029312,
+            "d6": 9175040,
+            "d7": 7340032,
+            "d8": 524288,
+            "s1": 11796480
+          },
+          "cpu_s": 1.959429,
+          "max_rss_mib": 26.52734375
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.504496484,
+          "bytes_down": 57671680,
+          "bytes_up": 54525952,
+          "requests": 255,
+          "timeouts": 29,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 2,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9699328,
+            "d3": 2621440,
+            "d4": 8126464,
+            "d5": 11010048,
+            "d6": 5767168,
+            "d7": 6291456,
+            "d8": 2097152,
+            "s1": 12058624
+          },
+          "cpu_s": 1.98872,
+          "max_rss_mib": 29.1171875
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.601776382,
+          "bytes_down": 57671680,
+          "bytes_up": 54263808,
+          "requests": 258,
+          "timeouts": 27,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 7,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8388608,
+            "d2": 8650752,
+            "d4": 5505024,
+            "d5": 7077888,
+            "d6": 6291456,
+            "d7": 7340032,
+            "d8": 1048576,
+            "s1": 13369344
+          },
+          "cpu_s": 1.971781,
+          "max_rss_mib": 32.01171875
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.936633805,
+          "bytes_down": 57671680,
+          "bytes_up": 57147392,
+          "requests": 235,
+          "timeouts": 6,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8912896,
+            "d2": 7864320,
+            "d3": 7864320,
+            "d5": 7077888,
+            "d6": 4194304,
+            "d7": 5767168,
+            "d8": 8126464,
+            "s1": 7864320
+          },
+          "cpu_s": 1.8071679999999999,
+          "max_rss_mib": 26.32421875
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.107953473,
+          "bytes_down": 57671680,
+          "bytes_up": 55050240,
+          "requests": 233,
+          "timeouts": 9,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6291456,
+            "d2": 9699328,
+            "d3": 8650752,
+            "d4": 8388608,
+            "d6": 2883584,
+            "d7": 6553600,
+            "d8": 6291456,
+            "s1": 8912896
+          },
+          "cpu_s": 1.9187880000000002,
+          "max_rss_mib": 27.23828125
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.288299313,
+          "bytes_down": 57671680,
+          "bytes_up": 50331648,
+          "requests": 233,
+          "timeouts": 8,
+          "reassigned": 1,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8650752,
+            "d2": 7340032,
+            "d3": 8126464,
+            "d4": 4980736,
+            "d5": 6291456,
+            "d7": 4718592,
+            "d8": 9699328,
+            "s1": 7864320
+          },
+          "cpu_s": 1.846358,
+          "max_rss_mib": 27.39453125
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.434252686,
+          "bytes_down": 57671680,
+          "bytes_up": 50855936,
+          "requests": 235,
+          "timeouts": 3,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 8,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7340032,
+            "d2": 7602176,
+            "d3": 7864320,
+            "d4": 6291456,
+            "d5": 7077888,
+            "d6": 6291456,
+            "d8": 6291456,
+            "s1": 8912896
+          },
+          "cpu_s": 1.890351,
+          "max_rss_mib": 27.89453125
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.5250179959999999,
+          "bytes_down": 57671680,
+          "bytes_up": 44302336,
+          "requests": 230,
+          "timeouts": 0,
+          "reassigned": 5,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 4718592,
+            "d2": 6029312,
+            "d3": 6553600,
+            "d4": 8912896,
+            "d5": 6291456,
+            "d6": 9961472,
+            "d7": 6815744,
+            "s1": 8388608
+          },
+          "cpu_s": 1.779733,
+          "max_rss_mib": 27.86328125
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:51:46.662576945+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 2.119780907
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 2.087563694
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 1.767542428
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 2.746954609
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 0.695596205
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 0.845261625
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 2.193390182
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 3.54828447
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.504496484
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.601776382
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 0.936633805
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.107953473
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.288299313
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.434252686
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.5250179959999999
+        }
+      ]
+    },
+    {
+      "variant": "cap16",
+      "trial": 4,
+      "wall_s": 150.360030239,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 83361792,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.380676,
+          "max_rss_mib": 27.06640625
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.417770168,
+          "bytes_down": 57933824,
+          "bytes_up": 55574528,
+          "requests": 256,
+          "timeouts": 30,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 1,
+          "busy_received": 0,
+          "sources": {
+            "d2": 4980736,
+            "d3": 7864320,
+            "d4": 4980736,
+            "d5": 11010048,
+            "d6": 8388608,
+            "d7": 5767168,
+            "d8": 3407872,
+            "s1": 11534336
+          },
+          "cpu_s": 1.871043,
+          "max_rss_mib": 28.05078125
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.505350609,
+          "bytes_down": 57933824,
+          "bytes_up": 55050240,
+          "requests": 256,
+          "timeouts": 27,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7864320,
+            "d3": 6291456,
+            "d4": 2359296,
+            "d5": 7077888,
+            "d6": 6815744,
+            "d7": 9961472,
+            "d8": 6553600,
+            "s1": 11010048
+          },
+          "cpu_s": 1.990283,
+          "max_rss_mib": 26.8125
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.757379876,
+          "bytes_down": 57933824,
+          "bytes_up": 56360960,
+          "requests": 243,
+          "timeouts": 9,
+          "reassigned": 8,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7077888,
+            "d2": 7602176,
+            "d4": 8126464,
+            "d5": 4456448,
+            "d6": 6029312,
+            "d7": 7602176,
+            "d8": 7864320,
+            "s1": 9175040
+          },
+          "cpu_s": 1.885332,
+          "max_rss_mib": 29.03125
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.720192791,
+          "bytes_down": 57933824,
+          "bytes_up": 51904512,
+          "requests": 244,
+          "timeouts": 15,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6553600,
+            "d2": 6553600,
+            "d3": 8650752,
+            "d5": 6553600,
+            "d6": 7864320,
+            "d7": 5767168,
+            "d8": 3407872,
+            "s1": 12582912
+          },
+          "cpu_s": 1.925271,
+          "max_rss_mib": 30.875
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.137805019,
+          "bytes_down": 57933824,
+          "bytes_up": 50855936,
+          "requests": 242,
+          "timeouts": 7,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 10,
+          "busy_received": 0,
+          "sources": {
+            "d1": 10747904,
+            "d2": 7340032,
+            "d3": 5242880,
+            "d4": 8126464,
+            "d6": 9437184,
+            "d7": 2621440,
+            "d8": 6029312,
+            "s1": 8388608
+          },
+          "cpu_s": 1.825552,
+          "max_rss_mib": 26.1015625
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.334152202,
+          "bytes_down": 57933824,
+          "bytes_up": 52690944,
+          "requests": 239,
+          "timeouts": 9,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8650752,
+            "d2": 6815744,
+            "d3": 7602176,
+            "d4": 9175040,
+            "d5": 9699328,
+            "d7": 1835008,
+            "d8": 5767168,
+            "s1": 8388608
+          },
+          "cpu_s": 1.85811,
+          "max_rss_mib": 25.6015625
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.4584065480000001,
+          "bytes_down": 57933824,
+          "bytes_up": 49020928,
+          "requests": 242,
+          "timeouts": 12,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9437184,
+            "d2": 10223616,
+            "d3": 9175040,
+            "d4": 7077888,
+            "d5": 786432,
+            "d6": 4194304,
+            "d8": 8126464,
+            "s1": 8912896
+          },
+          "cpu_s": 1.895874,
+          "max_rss_mib": 27.37890625
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.539569222,
+          "bytes_down": 57933824,
+          "bytes_up": 49545216,
+          "requests": 232,
+          "timeouts": 0,
+          "reassigned": 6,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 3932160,
+            "d2": 8650752,
+            "d3": 8650752,
+            "d4": 7077888,
+            "d5": 6291456,
+            "d6": 6029312,
+            "d7": 8126464,
+            "s1": 9175040
+          },
+          "cpu_s": 1.826733,
+          "max_rss_mib": 26.12890625
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:54:12.970724704+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 2.438173577
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 2.623743727
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 1.7635352549999999
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 1.407120597
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 1.238564945
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 1.204927423
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 1.238883628
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 1.647711729
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.505350609
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.757379876
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 0.720192791
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.137805019
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.334152202
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.4584065480000001
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.539569222
+        }
+      ]
+    },
+    {
+      "variant": "no-cap",
+      "trial": 4,
+      "wall_s": 150.330452401,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 80478208,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.388473,
+          "max_rss_mib": 24.99609375
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.418108674,
+          "bytes_down": 56360960,
+          "bytes_up": 55836672,
+          "requests": 250,
+          "timeouts": 25,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 6,
+          "busy_received": 0,
+          "sources": {
+            "d2": 9437184,
+            "d3": 5505024,
+            "d4": 9437184,
+            "d5": 11272192,
+            "d6": 8650752,
+            "d7": 1048576,
+            "d8": 262144,
+            "s1": 10747904
+          },
+          "cpu_s": 1.947473,
+          "max_rss_mib": 25.74609375
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.505610159,
+          "bytes_down": 56360960,
+          "bytes_up": 54263808,
+          "requests": 248,
+          "timeouts": 23,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 6,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9699328,
+            "d3": 2097152,
+            "d4": 10485760,
+            "d5": 7864320,
+            "d6": 5242880,
+            "d7": 8126464,
+            "d8": 2097152,
+            "s1": 10747904
+          },
+          "cpu_s": 1.877632,
+          "max_rss_mib": 27.15625
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.603045244,
+          "bytes_down": 56360960,
+          "bytes_up": 50069504,
+          "requests": 246,
+          "timeouts": 26,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 2,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8912896,
+            "d2": 6553600,
+            "d4": 2883584,
+            "d5": 4980736,
+            "d6": 5767168,
+            "d7": 6291456,
+            "d8": 7864320,
+            "s1": 13107200
+          },
+          "cpu_s": 1.873089,
+          "max_rss_mib": 29.8046875
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.941376457,
+          "bytes_down": 56360960,
+          "bytes_up": 54263808,
+          "requests": 233,
+          "timeouts": 13,
+          "reassigned": 2,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9699328,
+            "d2": 8912896,
+            "d3": 6291456,
+            "d5": 4718592,
+            "d6": 3145728,
+            "d7": 7602176,
+            "d8": 7864320,
+            "s1": 8126464
+          },
+          "cpu_s": 1.860405,
+          "max_rss_mib": 26.05859375
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.148852938,
+          "bytes_down": 56360960,
+          "bytes_up": 50331648,
+          "requests": 227,
+          "timeouts": 7,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 1,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9437184,
+            "d2": 7602176,
+            "d3": 7602176,
+            "d4": 3932160,
+            "d6": 8126464,
+            "d7": 6291456,
+            "d8": 3670016,
+            "s1": 9699328
+          },
+          "cpu_s": 1.8329309999999999,
+          "max_rss_mib": 27.50390625
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.195234589,
+          "bytes_down": 56360960,
+          "bytes_up": 50331648,
+          "requests": 231,
+          "timeouts": 9,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8388608,
+            "d2": 6815744,
+            "d3": 8650752,
+            "d4": 6291456,
+            "d5": 8126464,
+            "d7": 4194304,
+            "d8": 5242880,
+            "s1": 8650752
+          },
+          "cpu_s": 1.864403,
+          "max_rss_mib": 25.91796875
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.4239380879999999,
+          "bytes_down": 56360960,
+          "bytes_up": 48758784,
+          "requests": 227,
+          "timeouts": 4,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 5242880,
+            "d2": 7602176,
+            "d3": 7077888,
+            "d4": 8650752,
+            "d5": 5242880,
+            "d6": 7077888,
+            "d8": 7602176,
+            "s1": 7864320
+          },
+          "cpu_s": 1.751668,
+          "max_rss_mib": 27.109375
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.511551301,
+          "bytes_down": 56360960,
+          "bytes_up": 44564480,
+          "requests": 222,
+          "timeouts": 1,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 2,
+          "busy_received": 0,
+          "sources": {
+            "d1": 4194304,
+            "d2": 6553600,
+            "d3": 8912896,
+            "d4": 9175040,
+            "d5": 4980736,
+            "d6": 6291456,
+            "d7": 8126464,
+            "s1": 8126464
+          },
+          "cpu_s": 1.904453,
+          "max_rss_mib": 28.65625
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:56:38.193359631+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 1.753184698
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 2.3236521789999998
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 1.468804381
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 0.595628773
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 1.182934912
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 2.711571082
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 0.189609957
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 1.449663306
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.505610159
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.603045244
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 0.941376457
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.148852938
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.195234589
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.4239380879999999
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.511551301
+        }
+      ]
+    },
+    {
+      "variant": "cap16",
+      "trial": 5,
+      "wall_s": 150.34935688,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 81526784,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.365412,
+          "max_rss_mib": 24.17578125
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.414087739,
+          "bytes_down": 56098816,
+          "bytes_up": 54788096,
+          "requests": 251,
+          "timeouts": 32,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 1,
+          "busy_received": 0,
+          "sources": {
+            "d2": 6029312,
+            "d3": 2359296,
+            "d4": 7602176,
+            "d5": 10485760,
+            "d6": 10223616,
+            "d7": 5242880,
+            "d8": 2621440,
+            "s1": 11534336
+          },
+          "cpu_s": 2.079215,
+          "max_rss_mib": 25.4921875
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.507957088,
+          "bytes_down": 56098816,
+          "bytes_up": 53739520,
+          "requests": 232,
+          "timeouts": 16,
+          "reassigned": 2,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8650752,
+            "d3": 786432,
+            "d4": 7602176,
+            "d5": 6553600,
+            "d6": 7602176,
+            "d7": 7864320,
+            "d8": 6553600,
+            "s1": 10485760
+          },
+          "cpu_s": 2.047182,
+          "max_rss_mib": 27.06640625
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.604284963,
+          "bytes_down": 56098816,
+          "bytes_up": 46661632,
+          "requests": 248,
+          "timeouts": 22,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 8,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6553600,
+            "d2": 5242880,
+            "d4": 6029312,
+            "d5": 4194304,
+            "d6": 7864320,
+            "d7": 7864320,
+            "d8": 4980736,
+            "s1": 13369344
+          },
+          "cpu_s": 2.078438,
+          "max_rss_mib": 29.53515625
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.956818464,
+          "bytes_down": 56098816,
+          "bytes_up": 50069504,
+          "requests": 229,
+          "timeouts": 6,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7077888,
+            "d2": 6815744,
+            "d3": 7340032,
+            "d5": 6291456,
+            "d6": 6029312,
+            "d7": 5242880,
+            "d8": 8126464,
+            "s1": 9175040
+          },
+          "cpu_s": 2.061153,
+          "max_rss_mib": 26.5859375
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.128711576,
+          "bytes_down": 56098816,
+          "bytes_up": 51642368,
+          "requests": 230,
+          "timeouts": 11,
+          "reassigned": 2,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9437184,
+            "d2": 8388608,
+            "d3": 6029312,
+            "d4": 6291456,
+            "d6": 4980736,
+            "d7": 4456448,
+            "d8": 7077888,
+            "s1": 9437184
+          },
+          "cpu_s": 2.043744,
+          "max_rss_mib": 29.171875
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.268472183,
+          "bytes_down": 56098816,
+          "bytes_up": 51118080,
+          "requests": 230,
+          "timeouts": 6,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 6,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9175040,
+            "d2": 8388608,
+            "d3": 8388608,
+            "d4": 6029312,
+            "d5": 6553600,
+            "d7": 4718592,
+            "d8": 4718592,
+            "s1": 8126464
+          },
+          "cpu_s": 2.090233,
+          "max_rss_mib": 27.390625
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.409967912,
+          "bytes_down": 56098816,
+          "bytes_up": 47448064,
+          "requests": 232,
+          "timeouts": 5,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 9,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7602176,
+            "d2": 8912896,
+            "d3": 8126464,
+            "d4": 6029312,
+            "d5": 6815744,
+            "d6": 6291456,
+            "d8": 4194304,
+            "s1": 8126464
+          },
+          "cpu_s": 2.05698,
+          "max_rss_mib": 27.6328125
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.485819395,
+          "bytes_down": 56098816,
+          "bytes_up": 47185920,
+          "requests": 220,
+          "timeouts": 0,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 3,
+          "busy_received": 0,
+          "sources": {
+            "d1": 5242880,
+            "d2": 6815744,
+            "d3": 7864320,
+            "d4": 8650752,
+            "d5": 7077888,
+            "d6": 5242880,
+            "d7": 6291456,
+            "s1": 8912896
+          },
+          "cpu_s": 1.9141240000000002,
+          "max_rss_mib": 26.984375
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T01:59:04.430595557+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 1.211492095
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 0.979393038
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 0.551105442
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 0.357785997
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.507957088
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.604284963
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 0.956818464
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.128711576
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.268472183
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.409967912
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.485819395
+        }
+      ]
+    },
+    {
+      "variant": "no-cap",
+      "trial": 5,
+      "wall_s": 150.362738993,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "stopped",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 81002496,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.421123,
+          "max_rss_mib": 24.90625
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.422877342,
+          "bytes_down": 55836672,
+          "bytes_up": 56098816,
+          "requests": 235,
+          "timeouts": 17,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 1,
+          "busy_received": 0,
+          "sources": {
+            "d2": 8126464,
+            "d3": 4456448,
+            "d4": 9699328,
+            "d5": 7077888,
+            "d6": 4194304,
+            "d7": 7602176,
+            "d8": 4980736,
+            "s1": 9699328
+          },
+          "cpu_s": 2.067095,
+          "max_rss_mib": 27.42578125
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.509673191,
+          "bytes_down": 55836672,
+          "bytes_up": 54788096,
+          "requests": 238,
+          "timeouts": 20,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 1,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9175040,
+            "d3": 1310720,
+            "d4": 5242880,
+            "d5": 5242880,
+            "d6": 7340032,
+            "d7": 7077888,
+            "d8": 9437184,
+            "s1": 11010048
+          },
+          "cpu_s": 2.134886,
+          "max_rss_mib": 27.55078125
+        },
+        {
+          "name": "d3",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 0.60176295,
+          "bytes_down": 55836672,
+          "bytes_up": 48496640,
+          "requests": 250,
+          "timeouts": 28,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8912896,
+            "d2": 6029312,
+            "d4": 7340032,
+            "d5": 6291456,
+            "d6": 6029312,
+            "d7": 6029312,
+            "d8": 1048576,
+            "s1": 14155776
+          },
+          "cpu_s": 2.183746,
+          "max_rss_mib": 30.78125
+        },
+        {
+          "name": "d4",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.107561158,
+          "bytes_down": 55836672,
+          "bytes_up": 52690944,
+          "requests": 231,
+          "timeouts": 5,
+          "reassigned": 8,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 5,
+          "busy_received": 0,
+          "sources": {
+            "d1": 9699328,
+            "d2": 6815744,
+            "d3": 8126464,
+            "d5": 8912896,
+            "d6": 5242880,
+            "d7": 4456448,
+            "d8": 4194304,
+            "s1": 8388608
+          },
+          "cpu_s": 2.038429,
+          "max_rss_mib": 26.3515625
+        },
+        {
+          "name": "d5",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.070303262,
+          "bytes_down": 55836672,
+          "bytes_up": 50331648,
+          "requests": 236,
+          "timeouts": 10,
+          "reassigned": 5,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 8,
+          "busy_received": 0,
+          "sources": {
+            "d1": 7602176,
+            "d2": 5242880,
+            "d3": 7602176,
+            "d4": 9699328,
+            "d6": 6291456,
+            "d7": 6029312,
+            "d8": 4718592,
+            "s1": 8650752
+          },
+          "cpu_s": 2.031675,
+          "max_rss_mib": 27.7265625
+        },
+        {
+          "name": "d6",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.227490307,
+          "bytes_down": 55836672,
+          "bytes_up": 47448064,
+          "requests": 223,
+          "timeouts": 3,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 4194304,
+            "d2": 7864320,
+            "d3": 7602176,
+            "d4": 6029312,
+            "d5": 7077888,
+            "d7": 5505024,
+            "d8": 8388608,
+            "s1": 9175040
+          },
+          "cpu_s": 2.058026,
+          "max_rss_mib": 27.28515625
+        },
+        {
+          "name": "d7",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.328619705,
+          "bytes_down": 55836672,
+          "bytes_up": 47185920,
+          "requests": 236,
+          "timeouts": 8,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 11,
+          "busy_received": 0,
+          "sources": {
+            "d1": 8126464,
+            "d2": 9175040,
+            "d3": 8650752,
+            "d4": 5242880,
+            "d5": 6815744,
+            "d6": 6291456,
+            "d8": 2883584,
+            "s1": 8650752
+          },
+          "cpu_s": 2.020767,
+          "max_rss_mib": 27.5546875
+        },
+        {
+          "name": "d8",
+          "role": "get",
+          "exit": "timeout",
+          "runs": 1,
+          "completed": false,
+          "time_to_first_piece_s": 1.428674275,
+          "bytes_down": 55836672,
+          "bytes_up": 44040192,
+          "requests": 222,
+          "timeouts": 0,
+          "reassigned": 5,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 4,
+          "busy_received": 0,
+          "sources": {
+            "d1": 6553600,
+            "d2": 9437184,
+            "d3": 5767168,
+            "d4": 5505024,
+            "d5": 6029312,
+            "d6": 8388608,
+            "d7": 5505024,
+            "s1": 8650752
+          },
+          "cpu_s": 2.002064,
+          "max_rss_mib": 26.62109375
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "stop",
+          "at": "2026-10-26T02:01:31.040616197+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 2.747052499
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 2.2588156870000002
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d3",
+          "target": "s1",
+          "seconds": 1.30558522
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d4",
+          "target": "s1",
+          "seconds": 0.980541717
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d5",
+          "target": "s1",
+          "seconds": 0.931861784
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d6",
+          "target": "s1",
+          "seconds": 1.6024685600000002
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d7",
+          "target": "s1",
+          "seconds": 1.5947740129999999
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d8",
+          "target": "s1",
+          "seconds": 1.232292526
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d2",
+          "target": "-",
+          "seconds": 0.509673191
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d3",
+          "target": "-",
+          "seconds": 0.60176295
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d4",
+          "target": "-",
+          "seconds": 1.107561158
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d5",
+          "target": "-",
+          "seconds": 1.070303262
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d6",
+          "target": "-",
+          "seconds": 1.227490307
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d7",
+          "target": "-",
+          "seconds": 1.328619705
+        },
+        {
+          "kind": "first_piece_wait",
+          "peer": "d8",
+          "target": "-",
+          "seconds": 1.428674275
+        }
+      ]
+    }
+  ]
+}
