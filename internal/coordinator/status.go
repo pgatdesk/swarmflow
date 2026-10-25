@@ -125,7 +125,7 @@ func (co *Coordinator) publishStatus(now time.Time) {
 		Have: co.have.Count(), Outstanding: len(co.reqs), Verifying: co.verifying,
 		UploadQueue: int(co.uploadQueued.Load()),
 		BytesDown:   co.counters.BytesDown, BytesUp: co.bytesUp.Load(), Rejected: co.counters.Rejected,
-		Complete: co.have.Complete(), Endgame: co.inEndgame,
+		Complete: co.have.Complete(), Endgame: co.inEndgame && !co.have.Complete(),
 		Picker: co.cfg.Picker.Name(), Selector: co.cfg.Selector.Name(), Counters: co.counters,
 		StartedAt: co.started, FinishedAt: co.finished,
 	}
