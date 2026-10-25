@@ -1,0 +1,17 @@
+# build output
+/bin/
+*.exe
+*.test
+*.out
+
+# runtime data
+/data/
+/lab-runs/
+*.part
+*.db
+*.db-wal
+*.db-shm
+
+# editor
+.vscode/
+.idea/
