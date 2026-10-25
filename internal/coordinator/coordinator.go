@@ -213,6 +213,7 @@ type Coordinator struct {
 	contrib      map[protocol.PeerID]*SourceStatus
 	contribOrder []protocol.PeerID
 	started      time.Time
+	firstPeerAt  time.Time
 	finished     time.Time
 	lastStatus   time.Time
 	counters     Counters
@@ -412,6 +413,9 @@ func (co *Coordinator) onConn(ctx context.Context, c *conn.Conn) {
 	p.up = newUploader(c, co.st, co.cfg.UploadSlots, &co.bytesUp, &co.uploadQueued, co.uploadLimit, co.log)
 	co.peers[id] = p
 	co.peerList = append(co.peerList, p)
+	if co.firstPeerAt.IsZero() {
+		co.firstPeerAt = time.Now()
+	}
 	co.connected.Store(id, c.ListenAddr())
 	co.peerCount.Store(int32(len(co.peers)))
 	go p.up.run(upCtx)
@@ -778,6 +782,7 @@ func (co *Coordinator) onComplete() {
 		}
 	}
 	co.log.Info("download complete", "path", co.st.Path(), "elapsed", co.finished.Sub(co.started).Round(time.Millisecond),
+		"transfer", co.finished.Sub(co.firstPeerAt).Round(time.Millisecond),
 		"bytes", co.m.Size(), "rejected_pieces", co.counters.Rejected, "endgame_requests", co.counters.EndgameRequests)
 	elapsed := co.finished.Sub(co.started)
 	co.emit(events.DownloadComplete, fmt.Sprintf("download complete: %d MiB in %s (%.1f MiB/s), %d rejected pieces, %d endgame duplicates",

@@ -49,10 +49,13 @@ type Status struct {
 	Replication ReplicationStatus `json:"replication"`
 	// Sources lists every peer we accepted a (non-duplicate) piece from,
 	// including peers that have since disconnected, in first-contribution order.
-	Sources    []SourceStatus `json:"sources"`
-	StartedAt  time.Time      `json:"started_at"`
-	FinishedAt time.Time      `json:"finished_at,omitzero"`
-	Peers      []PeerStatus   `json:"peers"`
+	Sources   []SourceStatus `json:"sources"`
+	StartedAt time.Time      `json:"started_at"`
+	// FirstPeerAt is when the first peer connected: time before it is spent
+	// waiting for sources, not transferring.
+	FirstPeerAt time.Time    `json:"first_peer_at,omitzero"`
+	FinishedAt  time.Time    `json:"finished_at,omitzero"`
+	Peers       []PeerStatus `json:"peers"`
 }
 
 // SourceStatus is one peer's cumulative contribution to our download.
@@ -127,7 +130,7 @@ func (co *Coordinator) publishStatus(now time.Time) {
 		BytesDown:   co.counters.BytesDown, BytesUp: co.bytesUp.Load(), Rejected: co.counters.Rejected,
 		Complete: co.have.Complete(), Endgame: co.inEndgame && !co.have.Complete(),
 		Picker: co.cfg.Picker.Name(), Selector: co.cfg.Selector.Name(), Counters: co.counters,
-		StartedAt: co.started, FinishedAt: co.finished,
+		StartedAt: co.started, FinishedAt: co.finished, FirstPeerAt: co.firstPeerAt,
 	}
 	for _, id := range co.contribOrder {
 		s.Sources = append(s.Sources, *co.contrib[id])

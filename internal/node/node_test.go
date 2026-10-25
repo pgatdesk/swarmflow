@@ -27,7 +27,7 @@ import (
 
 const pieceSize = 16 << 10
 
-func testLogger(t *testing.T) *slog.Logger {
+func testLogger(testing.TB) *slog.Logger {
 	if testing.Verbose() {
 		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	}
@@ -35,15 +35,17 @@ func testLogger(t *testing.T) *slog.Logger {
 }
 
 type fixture struct {
-	t    *testing.T
+	t    testing.TB
 	dir  string
 	data []byte
 	m    *manifest.Manifest
 }
 
-func newFixture(t *testing.T, size int) *fixture {
+func newFixture(t testing.TB, size int) *fixture { return newFixtureSized(t, size, pieceSize) }
+
+func newFixtureSized(t testing.TB, size, piece int) *fixture {
 	data := dataset.Bytes(size, 42)
-	m, err := manifest.Build(bytes.NewReader(data), "payload.bin", int64(size), pieceSize)
+	m, err := manifest.Build(bytes.NewReader(data), "payload.bin", int64(size), piece)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,8 +315,11 @@ func TestEndgameRescuesPiecesFromSlowPeer(t *testing.T) {
 		return elapsed, s
 	}
 	with, s := run(t, true)
-	if s.Counters.EndgameRequests == 0 || !s.Endgame {
-		t.Fatalf("expected endgame duplicate requests (got %d, endgame=%v)", s.Counters.EndgameRequests, s.Endgame)
+	if s.Counters.EndgameRequests == 0 {
+		t.Fatalf("expected endgame duplicate requests (got %d)", s.Counters.EndgameRequests)
+	}
+	if s.Endgame {
+		t.Fatal("endgame still reported after completion")
 	}
 	without, s := run(t, false)
 	if s.Counters.EndgameRequests != 0 {
