@@ -180,8 +180,9 @@ per-peer cap):
   This uses no arbitrary weights: every term is a measured quantity in seconds. Load spreading
   comes from the `outstanding + 1` term, so a fast peer that is already loaded starts costing more.
   Cold start: a peer with fewer than 3 samples is assigned the median throughput of the known
-  peers (optimistic prior), and 1 in 10 decisions (configurable ε) goes to the least-sampled
-  eligible peer, so new peers get measured.
+  peers (optimistic prior), so it competes as a typical peer and gets measured. Optional
+  exploration (`-explore ε`, optionally `-explore-new-only`) sends a fraction of decisions to
+  the least-sampled peer. It defaults to 0, because it measured 20–40% slower (decision 0006).
 
 **Peer health**: invalid piece → reliability penalty; 2 invalid pieces in 10 minutes → ban the
 peer. 3 consecutive timeouts → cooldown with exponential backoff (5 s → 80 s). A slow peer is

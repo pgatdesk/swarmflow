@@ -15,7 +15,7 @@ const (
 	ReliabilityFloor = 0.05
 	// DefaultExplore is the fraction of adaptive decisions spent measuring the
 	// least-sampled candidate.
-	DefaultExplore = 0.1
+	DefaultExplore = 0 // decision 0006: exploration cost 20–40% in measured runs
 )
 
 // Priors returns the values assumed for candidates without enough history:
