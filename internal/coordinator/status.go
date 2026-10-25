@@ -2,6 +2,19 @@ package coordinator
 
 import "time"
 
+// Counters are cumulative event counts for a swarm.
+type Counters struct {
+	BytesDown       int64 `json:"bytes_down"`
+	Requests        int   `json:"requests"`
+	Timeouts        int   `json:"timeouts"`
+	Reassigned      int   `json:"reassigned"`
+	Rejected        int   `json:"rejected_pieces"`
+	DuplicatePieces int   `json:"duplicate_pieces"`
+	EndgameRequests int   `json:"endgame_requests"`
+	Cancelled       int   `json:"cancelled"`
+	Banned          int   `json:"banned"`
+}
+
 // Status is an immutable snapshot of a swarm, published by the Run goroutine
 // for readers on other goroutines (CLI progress, API).
 type Status struct {
@@ -16,6 +29,10 @@ type Status struct {
 	BytesUp     int64        `json:"bytes_up"`
 	Rejected    int          `json:"rejected_pieces"`
 	Complete    bool         `json:"complete"`
+	Endgame     bool         `json:"endgame"`
+	Picker      string       `json:"picker"`
+	Selector    string       `json:"selector"`
+	Counters    Counters     `json:"counters"`
 	StartedAt   time.Time    `json:"started_at"`
 	FinishedAt  time.Time    `json:"finished_at,omitzero"`
 	Peers       []PeerStatus `json:"peers"`
@@ -34,22 +51,45 @@ type PeerStatus struct {
 	Rejects     int       `json:"rejects"`
 	Invalid     int       `json:"invalid"`
 	Duplicates  int       `json:"duplicates"`
+	// Measurements; zero when not yet known (see the *Known flags).
+	ThroughputBps   float64 `json:"throughput_bps"`
+	ThroughputKnown bool    `json:"throughput_known"`
+	RTTMillis       float64 `json:"rtt_ms"`
+	RTTKnown        bool    `json:"rtt_known"`
+	LatencyP50ms    float64 `json:"latency_p50_ms"`
+	LatencyP95ms    float64 `json:"latency_p95_ms"`
+	Reliability     float64 `json:"reliability"`
+	Cooldown        bool    `json:"cooldown"`
 }
 
-func (co *Coordinator) publishStatus() {
+func ms(d time.Duration) float64 { return float64(d) / float64(time.Millisecond) }
+
+func (co *Coordinator) publishStatus(now time.Time) {
+	co.lastStatus = now
 	s := &Status{
 		SwarmID: co.m.ID().String(), Name: co.m.Name(), Size: co.m.Size(), Pieces: co.m.NumPieces(),
 		Have: co.have.Count(), Outstanding: len(co.reqs), Verifying: co.verifying,
-		BytesDown: co.bytesDown, BytesUp: co.bytesUp.Load(), Rejected: co.rejected,
-		Complete: co.have.Complete(), StartedAt: co.started, FinishedAt: co.finished,
+		BytesDown: co.counters.BytesDown, BytesUp: co.bytesUp.Load(), Rejected: co.counters.Rejected,
+		Complete: co.have.Complete(), Endgame: co.inEndgame,
+		Picker: co.cfg.Picker.Name(), Selector: co.cfg.Selector.Name(), Counters: co.counters,
+		StartedAt: co.started, FinishedAt: co.finished,
 	}
 	for _, p := range co.peerList {
-		s.Peers = append(s.Peers, PeerStatus{
+		st := p.stats
+		ps := PeerStatus{
 			ID: p.id.Short(), Addr: p.c.RemoteAddr().String(), Outbound: p.c.Outbound(),
 			ConnectedAt: p.c.ConnectedAt(), Has: p.has.Count(), Outstanding: len(p.outstanding),
-			PiecesFrom: p.piecesFrom, BytesFrom: p.bytesFrom, Timeouts: p.timeouts,
-			Rejects: p.rejects, Invalid: p.invalid, Duplicates: p.duplicates,
-		})
+			PiecesFrom: p.piecesFrom, BytesFrom: p.bytesFrom, Timeouts: st.Timeouts,
+			Rejects: st.Rejects, Invalid: st.Invalid, Duplicates: p.duplicates,
+			Reliability: st.Reliability(), Cooldown: st.InCooldown(now),
+		}
+		ps.ThroughputBps, ps.ThroughputKnown = st.Throughput()
+		rtt, ok := st.RTT()
+		ps.RTTMillis, ps.RTTKnown = ms(rtt), ok
+		if p50, p95, ok := st.Latency(); ok {
+			ps.LatencyP50ms, ps.LatencyP95ms = ms(p50), ms(p95)
+		}
+		s.Peers = append(s.Peers, ps)
 	}
 	co.status.Store(s)
 }

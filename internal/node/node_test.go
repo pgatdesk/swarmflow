@@ -19,6 +19,7 @@ import (
 	"github.com/pgatdesk/swarmflow/internal/discovery"
 	"github.com/pgatdesk/swarmflow/internal/manifest"
 	"github.com/pgatdesk/swarmflow/internal/protocol"
+	"github.com/pgatdesk/swarmflow/internal/scheduler"
 	"github.com/pgatdesk/swarmflow/internal/store"
 )
 
@@ -75,6 +76,9 @@ type testPeer struct {
 
 type peerOpts struct {
 	seedFile string // seed this file; otherwise download
+	// claimAll makes a seeder advertise every piece without checking its file,
+	// so it serves whatever bytes are on disk (a lying or corrupted peer).
+	claimAll bool
 	listener net.Listener
 	tracker  string
 	peers    []string
@@ -96,6 +100,11 @@ func (f *fixture) start(name string, o peerOpts) *testPeer {
 		if have, err = st.Recheck(context.Background(), 2); err != nil {
 			t.Fatal(err)
 		}
+		if o.claimAll {
+			for i := range f.m.NumPieces() {
+				have.Set(i)
+			}
+		}
 	} else {
 		os.MkdirAll(filepath.Dir(out), 0o755)
 		if st, _, err = store.Create(out+".part", out, f.m); err != nil {
@@ -113,6 +122,10 @@ func (f *fixture) start(name string, o peerOpts) *testPeer {
 	}
 	ccfg := coordinator.DefaultConfig()
 	ccfg.RequestTimeout = 2 * time.Second
+	id := n.ID()
+	seed := uint64(id[0])<<8 | uint64(id[1])
+	ccfg.Picker = scheduler.NewRarestFirst(seed)
+	ccfg.Selector = scheduler.NewAdaptivePeer(seed, scheduler.DefaultExplore)
 	if o.ccfg != nil {
 		o.ccfg(&ccfg)
 	}
@@ -237,12 +250,84 @@ func TestStalledPeerDoesNotBlockProgress(t *testing.T) {
 	})
 	f.waitComplete(30*time.Second, d)
 	f.checkOutput(d)
-	timeouts := 0
+	var stalledStatus *coordinator.PeerStatus
 	for _, p := range d.co.Status().Peers {
-		timeouts += p.Timeouts
+		if p.ID == stalled.n.ID().Short() {
+			stalledStatus = &p
+		}
 	}
-	if timeouts == 0 {
-		t.Fatal("expected requests to the stalled peer to time out")
+	if stalledStatus == nil {
+		t.Fatal("stalled peer disconnected; it should be deprioritised, not dropped")
+	}
+	if stalledStatus.Timeouts < 3 || !stalledStatus.Cooldown {
+		t.Fatalf("stalled peer: %d timeouts, cooldown=%v; want ≥3 and in cooldown", stalledStatus.Timeouts, stalledStatus.Cooldown)
+	}
+}
+
+func TestEndgameRescuesPiecesFromSlowPeer(t *testing.T) {
+	// The fast seeder delivers the whole 512 KiB in ~0.5 s. The slow seeder at
+	// 16 KiB/s needs ~1 s per 16 KiB piece, so the up-to-4 requests queued
+	// there take ~4 s unless endgame duplicates them to the fast peer.
+	run := func(t *testing.T, endgame bool) (time.Duration, *coordinator.Status) {
+		f := newFixture(t, 512<<10) // 32 pieces
+		src := f.writeSource("src.bin", nil)
+		slow := f.start("slow", peerOpts{seedFile: src, listener: newImpairedListener(t, impairment{bytesPerSec: 16 << 10})})
+		fast := f.start("fast", peerOpts{seedFile: src, listener: newImpairedListener(t, impairment{bytesPerSec: 1 << 20})})
+		d := f.start("d", peerOpts{
+			peers: []string{slow.addr(), fast.addr()},
+			ccfg: func(c *coordinator.Config) {
+				c.Selector = scheduler.NewRandomPeer(3) // make sure the slow peer gets work
+				c.RequestTimeout = 30 * time.Second     // so endgame, not timeouts, does the rescue
+				c.Endgame.Enabled = endgame
+			},
+		})
+		start := time.Now()
+		f.waitComplete(30*time.Second, d)
+		elapsed := time.Since(start)
+		f.checkOutput(d)
+		s := d.co.Status()
+		t.Logf("endgame=%v: completed in %v; endgame requests %d, duplicate pieces %d, cancelled %d",
+			endgame, elapsed.Round(time.Millisecond), s.Counters.EndgameRequests, s.Counters.DuplicatePieces, s.Counters.Cancelled)
+		return elapsed, s
+	}
+	with, s := run(t, true)
+	if s.Counters.EndgameRequests == 0 || !s.Endgame {
+		t.Fatalf("expected endgame duplicate requests (got %d, endgame=%v)", s.Counters.EndgameRequests, s.Endgame)
+	}
+	without, s := run(t, false)
+	if s.Counters.EndgameRequests != 0 {
+		t.Fatal("endgame requests issued with endgame disabled")
+	}
+	if with >= without/2 {
+		t.Fatalf("endgame %v vs no endgame %v; expected at least a 2x improvement", with, without)
+	}
+}
+
+func TestLyingPeerIsBanned(t *testing.T) {
+	f := newFixture(t, 512<<10)
+	// Every piece in the liar's file is corrupted, but it claims to have them all.
+	bad := bytes.Clone(f.data)
+	for i := range f.m.NumPieces() {
+		bad[f.m.PieceOffset(i)] ^= 0xFF
+	}
+	liarFile := filepath.Join(f.dir, "liar.bin")
+	os.WriteFile(liarFile, bad, 0o644)
+	liar := f.start("liar", peerOpts{seedFile: liarFile, claimAll: true})
+	good := f.start("good", peerOpts{seedFile: f.writeSource("src.bin", nil)})
+	d := f.start("d", peerOpts{
+		peers: []string{liar.addr(), good.addr()},
+		ccfg:  func(c *coordinator.Config) { c.Selector = scheduler.NewRandomPeer(5) },
+	})
+	f.waitComplete(30*time.Second, d)
+	f.checkOutput(d)
+	s := d.co.Status()
+	if s.Counters.Banned != 1 || s.Rejected < 2 {
+		t.Fatalf("banned=%d rejected=%d; want 1 ban after ≥2 invalid pieces", s.Counters.Banned, s.Rejected)
+	}
+	for _, p := range s.Peers {
+		if p.ID == liar.n.ID().Short() {
+			t.Fatal("banned peer still connected")
+		}
 	}
 }
 

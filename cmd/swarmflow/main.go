@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"flag"
 	"fmt"
@@ -132,9 +133,10 @@ func cmdPeer(mode string, args []string) error {
 	uploadSlots := fs.Int("upload-slots", 4, "max queued uploads per remote peer")
 	reqTimeout := fs.Duration("request-timeout", 10*time.Second, "deadline for one piece request")
 	maxPeers := fs.Int("max-peers", 50, "max connected peers")
-	picker := fs.String("picker", "sequential", "piece picker: sequential, random")
-	selector := fs.String("selector", "random", "peer selector: random")
-	seed := fs.Uint64("seed", 1, "seed for randomized policies")
+	picker := fs.String("picker", "rarest", "piece picker: "+strings.Join(scheduler.Pickers, ", "))
+	selector := fs.String("selector", "adaptive", "peer selector: "+strings.Join(scheduler.Selectors, ", "))
+	endgame := fs.Bool("endgame", true, "issue duplicate requests for overdue pieces near completion")
+	seed := fs.Uint64("seed", 0, "seed for randomized policies (0: derive from the random peer ID)")
 	exitOnComplete := fs.Bool("exit-on-complete", false, "get: exit once the download is complete")
 	progress := fs.Duration("progress", 2*time.Second, "progress report interval (0 disables)")
 	logLevel := fs.String("log-level", "info", "debug, info, warn, error")
@@ -162,21 +164,27 @@ func cmdPeer(mode string, args []string) error {
 	}
 	defer st.Close()
 
-	ccfg := coordinator.DefaultConfig()
-	ccfg.MaxOutstanding, ccfg.MaxPerPeer, ccfg.UploadSlots = *maxOut, *maxPerPeer, *uploadSlots
-	ccfg.RequestTimeout, ccfg.MaxPeers = *reqTimeout, *maxPeers
-	if ccfg.Picker, err = scheduler.NewPicker(*picker, *seed); err != nil {
-		return err
-	}
-	if ccfg.Selector, err = scheduler.NewSelector(*selector, *seed); err != nil {
-		return err
-	}
-
 	ncfg := node.DefaultConfig()
 	ncfg.ListenAddr, ncfg.TrackerURL, ncfg.StaticPeers = *listen, *tracker, peers
 	ncfg.AdvertiseIP, ncfg.AdvertisePort, ncfg.MaxPeers = *advIP, uint16(*advPort), *maxPeers
 	n, err := node.New(ncfg, log)
 	if err != nil {
+		return err
+	}
+
+	ccfg := coordinator.DefaultConfig()
+	ccfg.MaxOutstanding, ccfg.MaxPerPeer, ccfg.UploadSlots = *maxOut, *maxPerPeer, *uploadSlots
+	ccfg.RequestTimeout, ccfg.MaxPeers, ccfg.Endgame.Enabled = *reqTimeout, *maxPeers, *endgame
+	if *seed == 0 {
+		// Distinct seeds per peer keep downloaders from breaking rarest-first
+		// ties identically and all fetching the same piece.
+		id := n.ID()
+		*seed = binary.BigEndian.Uint64(id[:8])
+	}
+	if ccfg.Picker, err = scheduler.NewPicker(*picker, *seed); err != nil {
+		return err
+	}
+	if ccfg.Selector, err = scheduler.NewSelector(*selector, *seed); err != nil {
 		return err
 	}
 	co := coordinator.New(m, st, have, n.ID(), ccfg, n.Logger())
