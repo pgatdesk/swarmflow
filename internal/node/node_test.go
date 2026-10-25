@@ -81,6 +81,11 @@ type peerOpts struct {
 	// claimAll makes a seeder advertise every piece without checking its file,
 	// so it serves whatever bytes are on disk (a lying or corrupted peer).
 	claimAll bool
+	// acceptor runs a replica-only peer: it accepts REPL_OFFERs and fetches
+	// only the pieces it accepted.
+	acceptor bool
+	// replicas is the target copy count this peer maintains (0 = off).
+	replicas int
 	listener net.Listener
 	tracker  string
 	peers    []string
@@ -117,6 +122,7 @@ func (f *fixture) start(name string, o peerOpts) *testPeer {
 	ncfg := DefaultConfig()
 	ncfg.Listener, ncfg.TrackerURL, ncfg.StaticPeers = o.listener, o.tracker, o.peers
 	ncfg.AnnounceInterval, ncfg.LonelyInterval = time.Second, 200*time.Millisecond
+	ncfg.AcceptReplicas = o.acceptor
 	ncfg.MinBackoff, ncfg.MaxBackoff = 100*time.Millisecond, time.Second
 	n, err := New(ncfg, testLogger(t).With("name", name))
 	if err != nil {
@@ -128,6 +134,8 @@ func (f *fixture) start(name string, o peerOpts) *testPeer {
 	// PEX makes peers dial each other directly, bypassing the impaired
 	// listeners these tests rely on; only the PEX test enables it.
 	ccfg.PEXInterval = 0
+	ccfg.ReplicaOnly, ccfg.Replication.Accept = o.acceptor, o.acceptor
+	ccfg.Replication.Factor, ccfg.Replication.Interval = o.replicas, 50*time.Millisecond
 	id := n.ID()
 	seed := uint64(id[0])<<8 | uint64(id[1])
 	ccfg.Picker = scheduler.NewRarestFirst(seed)
@@ -475,6 +483,122 @@ func TestTrackerUnavailableAtStart(t *testing.T) {
 	defer srv.Close()
 	f.waitComplete(20*time.Second, d)
 	f.checkOutput(d)
+}
+
+// replicaPieces checks an acceptor's store and returns how many pieces it holds
+// that verify against the manifest.
+func (f *fixture) replicaPieces(p *testPeer) int {
+	f.t.Helper()
+	valid, err := p.st.Recheck(context.Background(), 2)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	if valid.Count() != p.co.Status().Have {
+		f.t.Fatalf("acceptor reports %d pieces, %d verify on disk", p.co.Status().Have, valid.Count())
+	}
+	return valid.Count()
+}
+
+func TestReplicationReachesTargetAndRecoversFromLoss(t *testing.T) {
+	f := newFixture(t, 512<<10) // 32 pieces
+	seed := f.start("seed", peerOpts{seedFile: f.writeSource("src.bin", nil), replicas: 3})
+	var acc []*testPeer
+	for _, name := range []string{"r1", "r2", "r3"} {
+		acc = append(acc, f.start(name, peerOpts{acceptor: true, peers: []string{seed.addr()}}))
+	}
+	n := f.m.NumPieces()
+	reached := func() bool {
+		r := seed.co.Status().Replication
+		return r.UnderReplicated == 0 && r.MinVerified >= 2
+	}
+	start := time.Now()
+	waitFor(t, 20*time.Second, reached)
+	t.Logf("2 verified extra copies of %d pieces after %v: %+v", n, time.Since(start).Round(time.Millisecond),
+		seed.co.Status().Replication.Counters)
+
+	total := 0
+	for _, a := range acc {
+		total += f.replicaPieces(a)
+		if a.co.Status().Complete {
+			t.Errorf("acceptor holds the whole file; replicas should be spread")
+		}
+	}
+	if total != 2*n {
+		t.Fatalf("acceptors hold %d piece copies; want exactly %d (target 3 incl. seed)", total, 2*n)
+	}
+
+	// Lose one replica holder: its copies stop counting and are re-created on
+	// the others. On loopback this finishes faster than the status snapshot
+	// interval, so it is observed through the cumulative counters.
+	lost := f.replicaPieces(acc[0])
+	before := seed.co.Status().Replication.Counters
+	start = time.Now()
+	acc[0].stop()
+	waitFor(t, 20*time.Second, func() bool {
+		r := seed.co.Status().Replication
+		return reached() && r.Counters.ProofsOK >= before.ProofsOK+lost
+	})
+	after := seed.co.Status().Replication.Counters
+	t.Logf("re-replicated %d lost copies within %v (offers %d, proofs %d)", lost,
+		time.Since(start).Round(time.Millisecond), after.OffersSent-before.OffersSent, after.ProofsOK-before.ProofsOK)
+	if after.OffersSent-before.OffersSent != lost {
+		t.Errorf("sent %d new offers for %d lost copies", after.OffersSent-before.OffersSent, lost)
+	}
+	for _, a := range acc[1:] {
+		if got := f.replicaPieces(a); got != n {
+			t.Errorf("remaining acceptor holds %d/%d pieces", got, n)
+		}
+	}
+}
+
+func TestLyingReplicaHolderFailsPossessionProof(t *testing.T) {
+	f := newFixture(t, 256<<10) // 16 pieces
+	bad := bytes.Clone(f.data)
+	for i := range f.m.NumPieces() {
+		bad[f.m.PieceOffset(i)] ^= 0xFF
+	}
+	liarFile := filepath.Join(f.dir, "liar.bin")
+	os.WriteFile(liarFile, bad, 0o644)
+	seed := f.start("seed", peerOpts{seedFile: f.writeSource("src.bin", nil), replicas: 2})
+	liar := f.start("liar", peerOpts{seedFile: liarFile, claimAll: true, peers: []string{seed.addr()}})
+	honest := f.start("honest", peerOpts{acceptor: true, peers: []string{seed.addr()}})
+	waitFor(t, 20*time.Second, func() bool {
+		r := seed.co.Status().Replication
+		return r.UnderReplicated == 0 && r.MinVerified >= 1
+	})
+	s := seed.co.Status()
+	if s.Replication.Counters.ProofsFailed < 2 || s.Counters.Banned != 1 {
+		t.Fatalf("proofs failed %d, banned %d; the liar's claims must fail and get it banned",
+			s.Replication.Counters.ProofsFailed, s.Counters.Banned)
+	}
+	if seed.co.Connected(liar.n.ID()) {
+		t.Fatal("liar still connected")
+	}
+	if got := f.replicaPieces(honest); got != f.m.NumPieces() {
+		t.Fatalf("honest acceptor holds %d/%d pieces; it should carry every copy", got, f.m.NumPieces())
+	}
+}
+
+func TestAllCopiesLostThenSourceReturns(t *testing.T) {
+	f := newFixture(t, 1<<20)
+	src := f.writeSource("src.bin", nil)
+	s1 := f.start("s1", peerOpts{seedFile: src, listener: impaired(t, faultnet.Impairment{BytesPerSec: 256 << 10})})
+	d := f.start("d", peerOpts{peers: []string{s1.addr()}})
+	waitFor(t, 10*time.Second, func() bool { return d.co.Status().Have >= d.co.Status().Pieces/4 })
+	s1.stop()
+	waitFor(t, 5*time.Second, func() bool { return d.co.Status().Unavailable > 0 })
+	time.Sleep(time.Second)
+	if s := d.co.Status(); s.Complete || s.Unavailable == 0 {
+		t.Fatalf("with no source left: complete=%v unavailable=%d", s.Complete, s.Unavailable)
+	}
+	t.Logf("no source for %d pieces; download waits instead of failing", d.co.Status().Unavailable)
+	// A new seeder appears and connects to the waiting downloader.
+	f.start("s2", peerOpts{seedFile: src, peers: []string{d.addr()}})
+	f.waitComplete(20*time.Second, d)
+	f.checkOutput(d)
+	if u := d.co.Status().Unavailable; u != 0 {
+		t.Fatalf("unavailable=%d after completion", u)
+	}
 }
 
 func TestDownloaderFindsSeederThatStartsLater(t *testing.T) {

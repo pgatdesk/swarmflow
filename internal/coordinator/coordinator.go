@@ -61,6 +61,10 @@ type Config struct {
 	// PEXInterval is how often connected peers' addresses are sent to each
 	// peer; 0 disables peer exchange (sending and acting on PEX).
 	PEXInterval time.Duration
+	// ReplicaOnly makes a writable store fetch only pieces accepted as
+	// replicas, instead of downloading the whole file.
+	ReplicaOnly bool
+	Replication ReplicationConfig
 }
 
 // Journal durably records download progress. PiecePersisted is called from a
@@ -94,6 +98,7 @@ func DefaultConfig() Config {
 		Endgame:           scheduler.DefaultEndgame(),
 		Stats:             peerstats.DefaultConfig(),
 		PEXInterval:       30 * time.Second,
+		Replication:       DefaultReplication(),
 	}
 }
 
@@ -141,6 +146,8 @@ type peer struct {
 	pingSent, lastPing time.Time
 	busyUntil          time.Time
 	pexSent, pexRecv   time.Time
+	acceptsReplicas    bool
+	declinedUntil      time.Time
 
 	piecesFrom, duplicates, unexpected int
 	bytesFrom                          int64
@@ -180,13 +187,22 @@ type Coordinator struct {
 	nextReq   uint32
 	verifying int
 	// downloading is false for read-only stores (seed mode serves a fixed,
-	// possibly partial, file and never fetches).
+	// possibly partial, file and never fetches) and in replica-only mode.
 	downloading bool
 	inEndgame   bool
-	started     time.Time
-	finished    time.Time
-	lastStatus  time.Time
-	counters    Counters
+	// wanted marks pieces accepted as replicas; wantedOpen counts those not
+	// yet persisted.
+	wanted       bitfield.Bitfield
+	wantedOpen   int
+	wantedBytes  int64
+	repl         *replication
+	proofJobs    chan proofJob
+	proofResults chan proofResult
+	unavailable  int
+	started      time.Time
+	finished     time.Time
+	lastStatus   time.Time
+	counters     Counters
 }
 
 // New creates a coordinator for manifest m backed by st. have is the set of
@@ -208,7 +224,13 @@ func New(m *manifest.Manifest, st *store.Store, have bitfield.Bitfield, self pro
 		stats:       make(map[protocol.PeerID]*peerstats.Stats),
 		banned:      make(map[protocol.PeerID]time.Time),
 		reqs:        make(map[uint32]*request),
-		downloading: st.Writable(),
+		downloading: st.Writable() && !cfg.ReplicaOnly,
+		wanted:      bitfield.New(n),
+		repl:        newReplication(n),
+		// Bounded: a busy proof worker drops challenge answers rather than
+		// queueing disk reads without limit.
+		proofJobs:    make(chan proofJob, 64),
+		proofResults: make(chan proofResult, 64),
 	}
 	for i := range n {
 		if have.Has(i) {
@@ -264,6 +286,7 @@ func (co *Coordinator) Run(ctx context.Context) error {
 	defer wg.Wait() // verify workers must stop before the caller closes the store
 	defer cancel()
 	wg.Go(func() { co.pool.Run(ctx) })
+	wg.Go(func() { co.proofWorker(ctx) })
 
 	co.started = time.Now()
 	if co.have.Complete() {
@@ -295,9 +318,13 @@ func (co *Coordinator) Run(ctx context.Context) error {
 			}
 		case r := <-co.pool.Results():
 			co.onVerified(r, time.Now())
+		case r := <-co.proofResults:
+			co.onProofResult(r, time.Now())
 		case now := <-tick.C:
 			co.checkTimeouts(now)
+			co.replicationTimeouts(now)
 			co.pingPeers(now)
+			co.replicate(now)
 			if now.Sub(co.lastStatus) >= statusInterval {
 				co.pruneStats(now)
 				co.publishStatus(now)
@@ -352,8 +379,9 @@ func (co *Coordinator) onConn(ctx context.Context, c *conn.Conn) {
 	upCtx, stop := context.WithCancel(ctx)
 	p := &peer{
 		id: id, c: c, stats: co.statsFor(id), has: bitfield.New(co.m.NumPieces()),
-		outstanding: make(map[uint32]*request),
-		stopUpload:  stop,
+		outstanding:     make(map[uint32]*request),
+		stopUpload:      stop,
+		acceptsReplicas: c.RemoteFlags()&protocol.FlagAcceptReplicas != 0,
 	}
 	p.up = newUploader(c, co.st, co.cfg.UploadSlots, &co.bytesUp, &co.uploadQueued, co.log)
 	co.peers[id] = p
@@ -442,6 +470,7 @@ func (co *Coordinator) removePeer(p *peer, err error) {
 	co.connected.Delete(p.id)
 	co.peerCount.Store(int32(len(co.peers)))
 	p.stopUpload()
+	co.forgetReplicas(p.id) // its verified copies no longer count
 	reassigned := len(p.outstanding)
 	for _, r := range p.outstanding {
 		co.finishRequest(r)
@@ -505,6 +534,7 @@ func (co *Coordinator) onMessage(p *peer, m protocol.Message, now time.Time) {
 			p.has.Set(i)
 			co.avail[i]++
 		}
+		co.onReplicaHave(p, i)
 	case protocol.Request:
 		co.onRequest(p, m)
 	case protocol.Cancel:
@@ -522,9 +552,15 @@ func (co *Coordinator) onMessage(p *peer, m protocol.Message, now time.Time) {
 		}
 	case protocol.PEX:
 		co.onPEX(p, m, now)
+	case protocol.Challenge:
+		co.onChallenge(p, m)
+	case protocol.Proof:
+		co.onProof(p, m, now)
+	case protocol.ReplOffer:
+		co.onReplOffer(p, m)
+	case protocol.ReplReply:
+		co.onReplReply(p, m, now)
 	default:
-		// CHALLENGE, PROOF and replication messages are handled by a later
-		// milestone; until then they are accepted and ignored.
 		co.log.Debug("ignoring message", "peer", p.id.Short(), "type", m.Type().String())
 	}
 }
@@ -650,6 +686,10 @@ func (co *Coordinator) onVerified(r verify.Result, now time.Time) {
 	}
 	co.state[i] = stPersisted
 	co.have.Set(i)
+	if co.wanted.Has(i) {
+		co.wantedOpen--
+		co.repl.counters.ReplicasStored++
+	}
 	// Endgame duplicates for this piece are no longer needed.
 	for _, rq := range co.reqs {
 		if rq.piece == i {
@@ -753,8 +793,10 @@ func (co *Coordinator) candidate(p *peer) scheduler.Candidate {
 }
 
 // NumPieces, Needed and Availability implement scheduler.View.
-func (co *Coordinator) NumPieces() int         { return co.m.NumPieces() }
-func (co *Coordinator) Needed(i int) bool      { return co.state[i] == stMissing }
+func (co *Coordinator) NumPieces() int { return co.m.NumPieces() }
+func (co *Coordinator) Needed(i int) bool {
+	return co.state[i] == stMissing && (co.downloading || co.wanted.Has(i))
+}
 func (co *Coordinator) Availability(i int) int { return co.avail[i] }
 
 // usable reports whether p may receive a new request for piece.
@@ -818,7 +860,7 @@ func (co *Coordinator) send(p *peer, piece int, now time.Time, cands []scheduler
 }
 
 func (co *Coordinator) schedule(now time.Time) {
-	if co.have.Complete() || len(co.peerList) == 0 || !co.downloading {
+	if co.have.Complete() || len(co.peerList) == 0 || (!co.downloading && co.wantedOpen == 0) {
 		return
 	}
 	budget := co.cfg.MaxOutstanding - len(co.reqs) - co.verifying
@@ -840,8 +882,8 @@ func (co *Coordinator) schedule(now time.Time) {
 // allMissingInFlight reports whether no fetchable piece is waiting for a
 // first request: the condition for entering endgame.
 func (co *Coordinator) allMissingInFlight() bool {
-	for i, s := range co.state {
-		if s == stMissing && co.avail[i] > 0 {
+	for i := range co.state {
+		if co.Needed(i) && co.avail[i] > 0 {
 			return false
 		}
 	}

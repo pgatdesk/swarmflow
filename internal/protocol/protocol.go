@@ -73,6 +73,12 @@ func decodeHex(dst []byte, s string) error {
 	return err
 }
 
+// Handshake flags.
+const (
+	// FlagAcceptReplicas advertises that the peer accepts REPL_OFFERs.
+	FlagAcceptReplicas uint16 = 1 << 0
+)
+
 // Handshake is exchanged once in each direction before any frame.
 type Handshake struct {
 	Major, Minor uint8

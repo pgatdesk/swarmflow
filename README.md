@@ -2,10 +2,13 @@
 
 An adaptive, fault-tolerant peer-to-peer file distribution network written in Go.
 
-**Status: Phase 2 (networking foundation) complete.** Adaptive scheduling, crash recovery,
-replication, network-aware peer selection and the Prometheus/Grafana dashboard are later
-phases. See [docs/design/architecture.md](docs/design/architecture.md) for the approved design and
-[docs/decisions/](docs/decisions/) for the decision log.
+**Status: Phases 2–4 complete** (networking, adaptive scheduling, fault tolerance and
+replication). Network-aware peer-selection experiments, the Prometheus/Grafana dashboard and the
+benchmark report are later phases.
+
+- Approved design: [docs/design/architecture.md](docs/design/architecture.md)
+- Decision log: [docs/decisions/](docs/decisions/)
+- What is and isn't guaranteed: [docs/durability.md](docs/durability.md)
 
 ## What works today (tested)
 
@@ -17,6 +20,15 @@ phases. See [docs/design/architecture.md](docs/design/architecture.md) for the a
   or are reassigned to other peers.
 - Corrupted pieces are rejected and fetched again.
 - Partial seeders that together hold the whole file can serve it.
+- Rarest-first piece picking, endgame duplicate requests, and peer scoring (delivery rate,
+  application RTT, latency percentiles, reliability, cooldown, bans).
+- An upload admission cap with busy back-off (decision 0003).
+- A deterministic simulator (`swarmlab sim`) that compares the scheduling policies.
+- Crash-safe resume from a SQLite state database: tested by hard-killing a real downloader
+  process.
+- Peer exchange (PEX), and re-discovery of remembered peers after a restart.
+- Replication to a target copy count, with copies verified by possession proofs. Lost copies
+  are re-replicated, and lying holders are detected and banned.
 
 ## Quick start (Windows, PowerShell)
 

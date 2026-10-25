@@ -36,6 +36,7 @@ commands:
   make-manifest  hash a file into a .swarm manifest
   seed           serve a file (complete or partial) to the swarm
   get            download a file (resuming if interrupted), then keep seeding unless -exit-on-complete
+  replica        hold replicas: store only the pieces other peers offer (see -replica-budget)
 
 run "swarmflow <command> -h" for the flags of a command.
 `
@@ -52,7 +53,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		err = cmdGenData(rest, stderr)
 	case "make-manifest":
 		err = cmdMakeManifest(rest, stdout, stderr)
-	case "seed", "get":
+	case "seed", "get", "replica":
 		err = cmdPeer(cmd, rest, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
@@ -152,6 +153,8 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	selector := fs.String("selector", "adaptive", "peer selector: "+strings.Join(scheduler.Selectors, ", "))
 	endgame := fs.Bool("endgame", true, "issue duplicate requests for overdue pieces near completion")
 	pex := fs.Duration("pex-interval", 30*time.Second, "peer exchange interval (0 disables peer exchange)")
+	replicas := fs.Int("replicas", 0, "keep this many verified copies of each held piece, counting ours (0 or 1: off)")
+	replicaBudget := fs.String("replica-budget", "0", "replica: max bytes to accept as replicas (0: unlimited)")
 	seed := fs.Uint64("seed", 0, "seed for randomized policies (0: derive from the random peer ID)")
 	exitOnComplete := fs.Bool("exit-on-complete", false, "get: exit once the download is complete")
 	progress := fs.Duration("progress", 2*time.Second, "progress report interval (0 disables)")
@@ -190,7 +193,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 		if st, have, err = openSeed(ctx, m, *file, log); err != nil {
 			return err
 		}
-	case "get":
+	case "get", "replica":
 		if *out == "" {
 			*out = m.Name()
 		}
@@ -218,6 +221,11 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	ncfg := node.DefaultConfig()
 	ncfg.ListenAddr, ncfg.TrackerURL, ncfg.StaticPeers, ncfg.HintPeers = *listen, *tracker, peers, hints
 	ncfg.AdvertiseIP, ncfg.AdvertisePort, ncfg.MaxPeers = *advIP, uint16(*advPort), *maxPeers
+	ncfg.AcceptReplicas = mode == "replica"
+	budget, err := dataset.ParseSize(*replicaBudget)
+	if err != nil {
+		return fmt.Errorf("-replica-budget: %w", err)
+	}
 	n, err := node.New(ncfg, log)
 	if err != nil {
 		return err
@@ -226,6 +234,10 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	ccfg := coordinator.DefaultConfig()
 	ccfg.MaxOutstanding, ccfg.MaxPerPeer, ccfg.UploadSlots = *maxOut, *maxPerPeer, *uploadSlots
 	ccfg.UploadQueueCap, ccfg.Journal, ccfg.PEXInterval = *uploadQueue, journal, *pex
+	ccfg.Replication.Factor = *replicas
+	if mode == "replica" {
+		ccfg.ReplicaOnly, ccfg.Replication.Accept, ccfg.Replication.Budget = true, true, budget
+	}
 	ccfg.RequestTimeout, ccfg.MaxPeers, ccfg.Endgame.Enabled = *reqTimeout, *maxPeers, *endgame
 	if *seed == 0 {
 		// Distinct seeds per peer keep downloaders from breaking rarest-first

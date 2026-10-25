@@ -22,25 +22,29 @@ type Counters struct {
 // Status is an immutable snapshot of a swarm, published by the Run goroutine
 // for readers on other goroutines (CLI progress, API).
 type Status struct {
-	SwarmID     string       `json:"swarm_id"`
-	Name        string       `json:"name"`
-	Size        int64        `json:"size"`
-	Pieces      int          `json:"pieces"`
-	Have        int          `json:"have"`
-	Outstanding int          `json:"outstanding_requests"`
-	Verifying   int          `json:"verifying"`
-	UploadQueue int          `json:"upload_queue"` // queued + in-progress uploads, all peers
-	BytesDown   int64        `json:"bytes_down"`
-	BytesUp     int64        `json:"bytes_up"`
-	Rejected    int          `json:"rejected_pieces"`
-	Complete    bool         `json:"complete"`
-	Endgame     bool         `json:"endgame"`
-	Picker      string       `json:"picker"`
-	Selector    string       `json:"selector"`
-	Counters    Counters     `json:"counters"`
-	StartedAt   time.Time    `json:"started_at"`
-	FinishedAt  time.Time    `json:"finished_at,omitzero"`
-	Peers       []PeerStatus `json:"peers"`
+	SwarmID     string   `json:"swarm_id"`
+	Name        string   `json:"name"`
+	Size        int64    `json:"size"`
+	Pieces      int      `json:"pieces"`
+	Have        int      `json:"have"`
+	Outstanding int      `json:"outstanding_requests"`
+	Verifying   int      `json:"verifying"`
+	UploadQueue int      `json:"upload_queue"` // queued + in-progress uploads, all peers
+	BytesDown   int64    `json:"bytes_down"`
+	BytesUp     int64    `json:"bytes_up"`
+	Rejected    int      `json:"rejected_pieces"`
+	Complete    bool     `json:"complete"`
+	Endgame     bool     `json:"endgame"`
+	Picker      string   `json:"picker"`
+	Selector    string   `json:"selector"`
+	Counters    Counters `json:"counters"`
+	// Unavailable counts needed pieces that no connected peer has: the download
+	// cannot finish until a source for them (re)appears.
+	Unavailable int               `json:"unavailable_pieces"`
+	Replication ReplicationStatus `json:"replication"`
+	StartedAt   time.Time         `json:"started_at"`
+	FinishedAt  time.Time         `json:"finished_at,omitzero"`
+	Peers       []PeerStatus      `json:"peers"`
 }
 
 type PeerStatus struct {
@@ -70,9 +74,34 @@ type PeerStatus struct {
 
 func ms(d time.Duration) float64 { return float64(d) / float64(time.Millisecond) }
 
+// countUnavailable counts needed pieces without any connected source and logs
+// when that number changes.
+func (co *Coordinator) countUnavailable() int {
+	n := 0
+	for i := range co.state {
+		if co.Needed(i) && co.avail[i] == 0 {
+			n++
+		}
+	}
+	informed := false // before any peer reports its pieces, "no source" means nothing yet
+	for _, p := range co.peerList {
+		informed = informed || p.gotBitfield
+	}
+	if n != co.unavailable && informed {
+		if n > 0 {
+			co.log.Warn("pieces have no available source; waiting for a peer that has them", "pieces", n)
+		} else {
+			co.log.Info("every needed piece has a source again")
+		}
+		co.unavailable = n
+	}
+	return n
+}
+
 func (co *Coordinator) publishStatus(now time.Time) {
 	co.lastStatus = now
 	s := &Status{
+		Unavailable: co.countUnavailable(), Replication: co.replicationStatus(now),
 		SwarmID: co.m.ID().String(), Name: co.m.Name(), Size: co.m.Size(), Pieces: co.m.NumPieces(),
 		Have: co.have.Count(), Outstanding: len(co.reqs), Verifying: co.verifying,
 		UploadQueue: int(co.uploadQueued.Load()),

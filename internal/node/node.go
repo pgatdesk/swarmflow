@@ -37,7 +37,9 @@ type Config struct {
 	StaticPeers   []string
 	// HintPeers are addresses remembered from earlier runs; they are dialed
 	// only while a swarm has no connected peers.
-	HintPeers        []string
+	HintPeers []string
+	// AcceptReplicas sets FlagAcceptReplicas in our handshakes.
+	AcceptReplicas   bool
 	MaxPeers         int
 	DialTimeout      time.Duration
 	HandshakeTimeout time.Duration
@@ -185,7 +187,18 @@ func (n *Node) acceptLoop(ctx context.Context) {
 }
 
 func (n *Node) handshake(s protocol.SwarmID) protocol.Handshake {
-	return protocol.Handshake{Major: protocol.VersionMajor, Minor: protocol.VersionMinor, Swarm: s, Peer: n.id, ListenPort: n.port}
+	var flags uint16
+	if n.cfg.AcceptReplicas {
+		flags |= protocol.FlagAcceptReplicas
+	}
+	return protocol.Handshake{Major: protocol.VersionMajor, Minor: protocol.VersionMinor, Flags: flags,
+		Swarm: s, Peer: n.id, ListenPort: n.port}
+}
+
+func (n *Node) newConn(nc net.Conn, h protocol.Handshake, outbound bool) *conn.Conn {
+	c := conn.New(nc, h.Peer, listenAddr(nc, h.ListenPort), outbound, n.cfg.Conn)
+	c.SetRemoteFlags(h.Flags)
+	return c
 }
 
 func (n *Node) acceptHandshake(ctx context.Context, nc net.Conn) error {
@@ -216,7 +229,7 @@ func (n *Node) acceptHandshake(ctx context.Context, nc net.Conn) error {
 		return err
 	}
 	nc.SetDeadline(time.Time{})
-	co.AddConn(ctx, conn.New(nc, theirs.Peer, listenAddr(nc, theirs.ListenPort), false, n.cfg.Conn))
+	co.AddConn(ctx, n.newConn(nc, theirs, false))
 	return nil
 }
 
@@ -267,7 +280,7 @@ func (n *Node) Dial(ctx context.Context, co *coordinator.Coordinator, addr strin
 	n.mu.Lock()
 	n.addrPeer[addr] = theirs.Peer
 	n.mu.Unlock()
-	co.AddConn(ctx, conn.New(nc, theirs.Peer, listenAddr(nc, theirs.ListenPort), true, n.cfg.Conn))
+	co.AddConn(ctx, n.newConn(nc, theirs, true))
 	return nil
 }
 

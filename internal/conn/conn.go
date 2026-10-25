@@ -64,6 +64,7 @@ type Conn struct {
 	remote   protocol.PeerID
 	listen   netip.AddrPort
 	outbound bool
+	flags    uint16 // remote handshake flags
 	cfg      Config
 	since    time.Time
 
@@ -90,6 +91,12 @@ func New(nc net.Conn, remote protocol.PeerID, listen netip.AddrPort, outbound bo
 		closing: make(chan struct{}),
 	}
 }
+
+// SetRemoteFlags records the remote's handshake flags; call before Start.
+func (c *Conn) SetRemoteFlags(f uint16) { c.flags = f }
+
+// RemoteFlags returns the remote's handshake flags.
+func (c *Conn) RemoteFlags() uint16 { return c.flags }
 
 func (c *Conn) Remote() protocol.PeerID    { return c.remote }
 func (c *Conn) ListenAddr() netip.AddrPort { return c.listen }
