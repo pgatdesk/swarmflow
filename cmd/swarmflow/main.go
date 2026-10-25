@@ -131,6 +131,7 @@ func cmdPeer(mode string, args []string) error {
 	maxOut := fs.Int("max-outstanding", 32, "max requests in flight plus pieces being verified")
 	maxPerPeer := fs.Int("max-per-peer", 4, "max requests in flight to one peer")
 	uploadSlots := fs.Int("upload-slots", 4, "max queued uploads per remote peer")
+	uploadQueue := fs.Int("upload-queue", 16, "max queued uploads across all peers before replying busy (0: unlimited)")
 	reqTimeout := fs.Duration("request-timeout", 10*time.Second, "deadline for one piece request")
 	maxPeers := fs.Int("max-peers", 50, "max connected peers")
 	picker := fs.String("picker", "rarest", "piece picker: "+strings.Join(scheduler.Pickers, ", "))
@@ -174,6 +175,7 @@ func cmdPeer(mode string, args []string) error {
 
 	ccfg := coordinator.DefaultConfig()
 	ccfg.MaxOutstanding, ccfg.MaxPerPeer, ccfg.UploadSlots = *maxOut, *maxPerPeer, *uploadSlots
+	ccfg.UploadQueueCap = *uploadQueue
 	ccfg.RequestTimeout, ccfg.MaxPeers, ccfg.Endgame.Enabled = *reqTimeout, *maxPeers, *endgame
 	if *seed == 0 {
 		// Distinct seeds per peer keep downloaders from breaking rarest-first

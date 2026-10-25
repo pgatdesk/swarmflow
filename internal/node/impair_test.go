@@ -23,7 +23,7 @@ type impairedListener struct {
 }
 
 func newImpairedListener(t *testing.T, imp impairment) *impairedListener {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := listen("127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -110,6 +110,17 @@ func TestBanWithinWindow(t *testing.T) {
 	}
 }
 
+func TestBusyIsNotAFailure(t *testing.T) {
+	cfg := DefaultConfig()
+	s := New(&cfg)
+	for range 10 {
+		s.OnBusy(t0)
+	}
+	if s.Reliability() != 1 || s.InCooldown(t0) || s.Busy != 10 {
+		t.Fatalf("busy rejects changed reliability (%v) or caused cooldown", s.Reliability())
+	}
+}
+
 func TestReliability(t *testing.T) {
 	cfg := DefaultConfig()
 	s := New(&cfg)

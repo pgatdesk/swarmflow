@@ -188,9 +188,14 @@ peer. 3 consecutive timeouts → cooldown with exponential backoff (5 s → 80 s
 deprioritised, not killed. A connection is declared dead only on TCP close/error or 30 s without
 any frame (keepalive every 10 s).
 
-**Bounds (defaults, configurable)**: max 50 connections; 32 outstanding requests per swarm;
-4 per peer; 8 queued frames per connection send queue; 4 concurrent upload slots per remote peer
-(`REJECT busy` beyond that). Request deadline = clamp(4 × that peer's p95 latency, 2 s, 30 s).
+**Bounds (defaults, configurable)**:
+- Connections and requests: max 50 connections; 32 outstanding requests per swarm; 4 per peer;
+  8 queued frames per connection send queue.
+- Uploads: 4 queued uploads per remote peer, and at most 16 queued or in-progress uploads across
+  all peers of a swarm (decision 0003). Requests beyond either limit get `REJECT busy`. A busy
+  reject does not lower reliability; the requester avoids that peer for 250 ms ± 25 %.
+- Request deadline: clamp(4 × that peer's p95 latency, 2 s, 30 s); 10 s before the peer has
+  latency history.
 
 ## 8. Peer measurement
 

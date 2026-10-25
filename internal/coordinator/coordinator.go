@@ -33,6 +33,14 @@ type Config struct {
 	MaxPerPeer int
 	// UploadSlots bounds queued uploads per remote peer; beyond it we REJECT busy.
 	UploadSlots int
+	// UploadQueueCap bounds queued plus in-progress uploads across all remote
+	// peers of the swarm; beyond it we REJECT busy (decision 0003). Short queues
+	// keep requesters' piece choices fresh instead of committing them seconds
+	// before they can be served.
+	UploadQueueCap int
+	// BusyBackoff is how long we avoid a peer after it rejects us as busy
+	// (randomised ±25% to avoid synchronised retries).
+	BusyBackoff time.Duration
 	// RequestTimeout is the deadline for requests to a peer without latency
 	// history. Once a peer has history its deadline is
 	// clamp(TimeoutFactor × p95 latency, RequestTimeoutMin, RequestTimeoutMax).
@@ -54,6 +62,8 @@ func DefaultConfig() Config {
 		MaxOutstanding:    32,
 		MaxPerPeer:        4,
 		UploadSlots:       4,
+		UploadQueueCap:    16,
+		BusyBackoff:       250 * time.Millisecond,
 		RequestTimeout:    10 * time.Second,
 		RequestTimeoutMin: 2 * time.Second,
 		RequestTimeoutMax: 30 * time.Second,
@@ -110,6 +120,7 @@ type peer struct {
 
 	pingNonce          uint64
 	pingSent, lastPing time.Time
+	busyUntil          time.Time
 
 	piecesFrom, duplicates, unexpected int
 	bytesFrom                          int64
@@ -128,10 +139,11 @@ type Coordinator struct {
 	done     chan struct{}
 	complete chan struct{}
 
-	connected sync.Map // protocol.PeerID → netip.AddrPort; read by the node for dialing decisions
-	peerCount atomic.Int32
-	bytesUp   atomic.Int64
-	status    atomic.Pointer[Status]
+	connected    sync.Map // protocol.PeerID → netip.AddrPort; read by the node for dialing decisions
+	peerCount    atomic.Int32
+	bytesUp      atomic.Int64
+	uploadQueued atomic.Int32
+	status       atomic.Pointer[Status]
 
 	// Everything below is owned by the Run goroutine.
 	have      bitfield.Bitfield
@@ -308,7 +320,7 @@ func (co *Coordinator) onConn(ctx context.Context, c *conn.Conn) {
 		outstanding: make(map[uint32]*request),
 		stopUpload:  stop,
 	}
-	p.up = newUploader(c, co.st, co.cfg.UploadSlots, &co.bytesUp, co.log)
+	p.up = newUploader(c, co.st, co.cfg.UploadSlots, &co.bytesUp, &co.uploadQueued, co.log)
 	co.peers[id] = p
 	co.peerList = append(co.peerList, p)
 	co.connected.Store(id, c.ListenAddr())
@@ -439,7 +451,8 @@ func (co *Coordinator) onRequest(p *peer, m protocol.Request) {
 		p.c.SendControl(protocol.Reject{ReqID: m.ReqID, Reason: protocol.RejectNotHave})
 		return
 	}
-	if !p.up.enqueue(m) {
+	if (co.cfg.UploadQueueCap > 0 && int(co.uploadQueued.Load()) >= co.cfg.UploadQueueCap) || !p.up.enqueue(m) {
+		co.counters.BusySent++
 		p.c.SendControl(protocol.Reject{ReqID: m.ReqID, Reason: protocol.RejectBusy})
 	}
 }
@@ -485,10 +498,19 @@ func (co *Coordinator) onReject(p *peer, m protocol.Reject, now time.Time) {
 		return
 	}
 	co.finishRequest(r)
-	p.stats.OnReject(now)
-	if m.Reason == protocol.RejectNotHave && p.has.Has(r.piece) {
-		p.has.Clear(r.piece)
-		co.avail[r.piece]--
+	switch m.Reason {
+	case protocol.RejectBusy:
+		// Backpressure, not failure: try others now and this peer again shortly.
+		p.stats.OnBusy(now)
+		co.counters.BusyReceived++
+		jitter := time.Duration(rand.Int64N(int64(co.cfg.BusyBackoff)/2+1)) - co.cfg.BusyBackoff/4
+		p.busyUntil = now.Add(co.cfg.BusyBackoff + jitter)
+	default:
+		p.stats.OnReject(now)
+		if m.Reason == protocol.RejectNotHave && p.has.Has(r.piece) {
+			p.has.Clear(r.piece)
+			co.avail[r.piece]--
+		}
 	}
 	co.releasePiece(r.piece)
 }
@@ -635,8 +657,9 @@ func (co *Coordinator) Needed(i int) bool      { return co.state[i] == stMissing
 func (co *Coordinator) Availability(i int) int { return co.avail[i] }
 
 // usable reports whether p may receive a new request for piece.
-func (co *Coordinator) usable(p *peer, piece int) bool {
-	return !p.closing && p.gotBitfield && p.has.Has(piece) && len(p.outstanding) < co.cfg.MaxPerPeer
+func (co *Coordinator) usable(p *peer, piece int, now time.Time) bool {
+	return !p.closing && p.gotBitfield && p.has.Has(piece) && len(p.outstanding) < co.cfg.MaxPerPeer &&
+		!now.Before(p.busyUntil)
 }
 
 // sources returns the candidates for piece, excluding peers in skip. Peers in
@@ -647,7 +670,7 @@ func (co *Coordinator) sources(piece int, now time.Time, skip func(*peer) bool) 
 	var ps []*peer
 	var cooling []*peer
 	for _, p := range co.peerList {
-		if !co.usable(p, piece) || (skip != nil && skip(p)) {
+		if !co.usable(p, piece, now) || (skip != nil && skip(p)) {
 			continue
 		}
 		if p.stats.InCooldown(now) {

@@ -13,6 +13,10 @@ type Counters struct {
 	EndgameRequests int   `json:"endgame_requests"`
 	Cancelled       int   `json:"cancelled"`
 	Banned          int   `json:"banned"`
+	// BusySent counts REJECT(busy) we sent (our upload queue was full);
+	// BusyReceived counts those we received.
+	BusySent     int `json:"busy_sent"`
+	BusyReceived int `json:"busy_received"`
 }
 
 // Status is an immutable snapshot of a swarm, published by the Run goroutine
@@ -25,6 +29,7 @@ type Status struct {
 	Have        int          `json:"have"`
 	Outstanding int          `json:"outstanding_requests"`
 	Verifying   int          `json:"verifying"`
+	UploadQueue int          `json:"upload_queue"` // queued + in-progress uploads, all peers
 	BytesDown   int64        `json:"bytes_down"`
 	BytesUp     int64        `json:"bytes_up"`
 	Rejected    int          `json:"rejected_pieces"`
@@ -49,6 +54,7 @@ type PeerStatus struct {
 	BytesFrom   int64     `json:"bytes_from"`
 	Timeouts    int       `json:"timeouts"`
 	Rejects     int       `json:"rejects"`
+	Busy        int       `json:"busy"`
 	Invalid     int       `json:"invalid"`
 	Duplicates  int       `json:"duplicates"`
 	// Measurements; zero when not yet known (see the *Known flags).
@@ -69,7 +75,8 @@ func (co *Coordinator) publishStatus(now time.Time) {
 	s := &Status{
 		SwarmID: co.m.ID().String(), Name: co.m.Name(), Size: co.m.Size(), Pieces: co.m.NumPieces(),
 		Have: co.have.Count(), Outstanding: len(co.reqs), Verifying: co.verifying,
-		BytesDown: co.counters.BytesDown, BytesUp: co.bytesUp.Load(), Rejected: co.counters.Rejected,
+		UploadQueue: int(co.uploadQueued.Load()),
+		BytesDown:   co.counters.BytesDown, BytesUp: co.bytesUp.Load(), Rejected: co.counters.Rejected,
 		Complete: co.have.Complete(), Endgame: co.inEndgame,
 		Picker: co.cfg.Picker.Name(), Selector: co.cfg.Selector.Name(), Counters: co.counters,
 		StartedAt: co.started, FinishedAt: co.finished,
@@ -80,7 +87,7 @@ func (co *Coordinator) publishStatus(now time.Time) {
 			ID: p.id.Short(), Addr: p.c.RemoteAddr().String(), Outbound: p.c.Outbound(),
 			ConnectedAt: p.c.ConnectedAt(), Has: p.has.Count(), Outstanding: len(p.outstanding),
 			PiecesFrom: p.piecesFrom, BytesFrom: p.bytesFrom, Timeouts: st.Timeouts,
-			Rejects: st.Rejects, Invalid: st.Invalid, Duplicates: p.duplicates,
+			Rejects: st.Rejects, Busy: st.Busy, Invalid: st.Invalid, Duplicates: p.duplicates,
 			Reliability: st.Reliability(), Cooldown: st.InCooldown(now),
 		}
 		ps.ThroughputBps, ps.ThroughputKnown = st.Throughput()

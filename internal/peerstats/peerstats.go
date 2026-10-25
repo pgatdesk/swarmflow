@@ -10,8 +10,8 @@
 //   - RTT comes from PING/PONG on the data connection, so it includes queueing
 //     behind data already in flight ("application RTT"). Timeouts never produce
 //     RTT or latency samples.
-//   - Reliability is an EWMA of request outcomes (success = 1, timeout or
-//     reject = 0).
+//   - Reliability is an EWMA of request outcomes (success = 1; timeout,
+//     invalid piece or REJECT(not_have) = 0). REJECT(busy) is not an outcome.
 package peerstats
 
 import (
@@ -74,8 +74,8 @@ type Stats struct {
 	invalidAt      []time.Time
 	banned         bool
 
-	Successes, Timeouts, Rejects, Invalid int
-	Bytes                                 int64
+	Successes, Timeouts, Rejects, Busy, Invalid int
+	Bytes                                       int64
 }
 
 // New returns stats for a peer with no history. cfg must outlive the Stats.
@@ -139,11 +139,19 @@ func (s *Stats) OnTimeout(now time.Time) {
 	}
 }
 
-// OnReject records a REJECT (busy or not-have).
+// OnReject records a REJECT(not_have): the peer advertised a piece it then
+// refused, which counts against its reliability.
 func (s *Stats) OnReject(now time.Time) {
 	s.Rejects++
 	s.lastSeen = now
 	s.outcome(false)
+}
+
+// OnBusy records a REJECT(busy). It is backpressure from a healthy peer, not a
+// failure, so reliability is unchanged (decision 0003).
+func (s *Stats) OnBusy(now time.Time) {
+	s.Busy++
+	s.lastSeen = now
 }
 
 // OnInvalid records a piece that failed verification and reports whether the

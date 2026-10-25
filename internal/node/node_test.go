@@ -118,6 +118,7 @@ func (f *fixture) start(name string, o peerOpts) *testPeer {
 	ncfg.MinBackoff, ncfg.MaxBackoff = 100*time.Millisecond, time.Second
 	n, err := New(ncfg, testLogger(t).With("name", name))
 	if err != nil {
+		st.Close()
 		t.Fatal(err)
 	}
 	ccfg := coordinator.DefaultConfig()
@@ -301,6 +302,47 @@ func TestEndgameRescuesPiecesFromSlowPeer(t *testing.T) {
 	if with >= without/2 {
 		t.Fatalf("endgame %v vs no endgame %v; expected at least a 2x improvement", with, without)
 	}
+}
+
+func TestUploadQueueCapRejectsBusyWithoutPenalty(t *testing.T) {
+	f := newFixture(t, 512<<10)
+	seed := f.start("seed", peerOpts{
+		seedFile: f.writeSource("src.bin", nil),
+		listener: newImpairedListener(t, impairment{bytesPerSec: 2 << 20}),
+		ccfg:     func(c *coordinator.Config) { c.UploadQueueCap = 2 },
+	})
+	var ds []*testPeer
+	for _, name := range []string{"d1", "d2", "d3", "d4"} {
+		ds = append(ds, f.start(name, peerOpts{
+			peers: []string{seed.addr()},
+			ccfg:  func(c *coordinator.Config) { c.RequestTimeout = 30 * time.Second },
+		}))
+	}
+	f.waitComplete(30*time.Second, ds...)
+	for _, d := range ds {
+		f.checkOutput(d)
+	}
+	waitFor(t, 5*time.Second, func() bool { return seed.co.Status().Counters.BusySent > 0 })
+	busy := 0
+	for _, d := range ds {
+		s := d.co.Status()
+		busy += s.Counters.BusyReceived
+		for _, p := range s.Peers {
+			if p.ID == seed.n.ID().Short() && (p.Reliability != 1 || p.Timeouts != 0) {
+				t.Errorf("%s: seeder reliability %.2f, timeouts %d; busy rejects must not count as failures",
+					d.out, p.Reliability, p.Timeouts)
+			}
+		}
+	}
+	if busy == 0 {
+		t.Fatal("downloaders received no busy rejects with a queue cap of 2")
+	}
+	t.Logf("busy rejects: sent %d, received %d", seed.co.Status().Counters.BusySent, busy)
+	for _, d := range ds {
+		d.stop()
+	}
+	// No queue slots leak when requesters disconnect.
+	waitFor(t, 5*time.Second, func() bool { return seed.co.Status().UploadQueue == 0 })
 }
 
 func TestLyingPeerIsBanned(t *testing.T) {
