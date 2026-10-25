@@ -55,6 +55,17 @@ type Config struct {
 	Selector          scheduler.PeerSelector
 	Endgame           scheduler.EndgamePolicy
 	Stats             peerstats.Config
+	// Journal, if set, durably records progress (see Journal).
+	Journal Journal
+}
+
+// Journal durably records download progress. PiecePersisted is called from a
+// verify worker after the piece's data has been written and flushed; the piece
+// only counts as persisted if it returns nil (otherwise it is fetched again).
+// Completed is called after the file is finalized.
+type Journal interface {
+	PiecePersisted(piece int) error
+	Completed() error
 }
 
 func DefaultConfig() Config {
@@ -193,7 +204,16 @@ func New(m *manifest.Manifest, st *store.Store, have bitfield.Bitfield, self pro
 			co.state[i] = stPersisted
 		}
 	}
-	co.pool = verify.NewPool(m, st.WritePiece, cfg.VerifyWorkers, cfg.MaxOutstanding)
+	commit := func(i int, data []byte) error {
+		if err := st.WritePiece(i, data); err != nil { // flushed before returning
+			return err
+		}
+		if cfg.Journal != nil {
+			return cfg.Journal.PiecePersisted(i)
+		}
+		return nil
+	}
+	co.pool = verify.NewPool(m, commit, cfg.VerifyWorkers, cfg.MaxOutstanding)
 	co.publishStatus(time.Now())
 	return co
 }
@@ -578,6 +598,10 @@ func (co *Coordinator) onComplete() {
 	co.finished = time.Now()
 	if err := co.st.Finalize(); err != nil {
 		co.log.Error("finalizing download failed", "err", err)
+	} else if co.cfg.Journal != nil {
+		if err := co.cfg.Journal.Completed(); err != nil {
+			co.log.Error("recording completion failed", "err", err)
+		}
 	}
 	co.log.Info("download complete", "path", co.st.Path(), "elapsed", co.finished.Sub(co.started).Round(time.Millisecond),
 		"bytes", co.m.Size(), "rejected_pieces", co.counters.Rejected, "endgame_requests", co.counters.EndgameRequests)

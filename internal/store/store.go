@@ -161,8 +161,16 @@ func (s *Store) Close() error {
 
 // Recheck hashes every piece on disk and returns the set that matches the manifest.
 func (s *Store) Recheck(ctx context.Context, workers int) (bitfield.Bitfield, error) {
-	n := s.m.NumPieces()
-	have := bitfield.New(n)
+	all := make([]int, s.m.NumPieces())
+	for i := range all {
+		all[i] = i
+	}
+	return s.Verify(ctx, workers, all)
+}
+
+// Verify hashes the given pieces and returns the subset that matches the manifest.
+func (s *Store) Verify(ctx context.Context, workers int, pieces []int) (bitfield.Bitfield, error) {
+	have := bitfield.New(s.m.NumPieces())
 	var (
 		mu       sync.Mutex
 		wg       sync.WaitGroup
@@ -183,7 +191,10 @@ func (s *Store) Recheck(ctx context.Context, workers int) (bitfield.Bitfield, er
 			}
 		})
 	}
-	for i := 0; i < n && ctx.Err() == nil; i++ {
+	for _, i := range pieces {
+		if ctx.Err() != nil {
+			break
+		}
 		next <- i
 	}
 	close(next)

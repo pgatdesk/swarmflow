@@ -17,6 +17,7 @@ import (
 	"github.com/pgatdesk/swarmflow/internal/coordinator"
 	"github.com/pgatdesk/swarmflow/internal/dataset"
 	"github.com/pgatdesk/swarmflow/internal/discovery"
+	"github.com/pgatdesk/swarmflow/internal/faultnet"
 	"github.com/pgatdesk/swarmflow/internal/manifest"
 	"github.com/pgatdesk/swarmflow/internal/protocol"
 	"github.com/pgatdesk/swarmflow/internal/scheduler"
@@ -175,6 +176,14 @@ func (f *fixture) checkOutput(p *testPeer) {
 	}
 }
 
+func impaired(t *testing.T, imp faultnet.Impairment) *faultnet.Listener {
+	ln, err := faultnet.Listen("127.0.0.1:0", imp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ln
+}
+
 func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
 	t.Helper()
 	for end := time.Now().Add(timeout); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
@@ -224,14 +233,14 @@ func TestPartialSeedersCoverFile(t *testing.T) {
 func TestSeederKilledMidTransfer(t *testing.T) {
 	f := newFixture(t, 2<<20)
 	src := f.writeSource("src.bin", nil)
-	ln := newImpairedListener(t, impairment{bytesPerSec: 256 << 10})
+	ln := impaired(t, faultnet.Impairment{BytesPerSec: 256 << 10})
 	a := f.start("a", peerOpts{seedFile: src, listener: ln})
-	b := f.start("b", peerOpts{seedFile: src, listener: newImpairedListener(t, impairment{bytesPerSec: 256 << 10})})
+	b := f.start("b", peerOpts{seedFile: src, listener: impaired(t, faultnet.Impairment{BytesPerSec: 256 << 10})})
 	d := f.start("d", peerOpts{peers: []string{a.addr(), b.addr()}})
 
 	waitFor(t, 20*time.Second, func() bool { return d.co.Status().Have >= d.co.Status().Pieces/5 })
 	before := d.co.Status().Have
-	ln.killAll() // abrupt: sockets reset, no BYE
+	ln.KillAll() // abrupt: sockets reset, no BYE
 	a.stop()
 	t.Logf("killed seeder a at %d/%d pieces", before, d.co.Status().Pieces)
 
@@ -243,8 +252,8 @@ func TestStalledPeerDoesNotBlockProgress(t *testing.T) {
 	f := newFixture(t, 1<<20)
 	src := f.writeSource("src.bin", nil)
 	// The stalled seeder completes the handshake and BITFIELD, then never sends again.
-	stalled := f.start("stalled", peerOpts{seedFile: src, listener: newImpairedListener(t, impairment{stallAfter: 1024})})
-	good := f.start("good", peerOpts{seedFile: src, listener: newImpairedListener(t, impairment{bytesPerSec: 1 << 20})})
+	stalled := f.start("stalled", peerOpts{seedFile: src, listener: impaired(t, faultnet.Impairment{StallAfter: 1024})})
+	good := f.start("good", peerOpts{seedFile: src, listener: impaired(t, faultnet.Impairment{BytesPerSec: 1 << 20})})
 	d := f.start("d", peerOpts{
 		peers: []string{stalled.addr(), good.addr()},
 		ccfg:  func(c *coordinator.Config) { c.RequestTimeout = 500 * time.Millisecond },
@@ -272,8 +281,8 @@ func TestEndgameRescuesPiecesFromSlowPeer(t *testing.T) {
 	run := func(t *testing.T, endgame bool) (time.Duration, *coordinator.Status) {
 		f := newFixture(t, 512<<10) // 32 pieces
 		src := f.writeSource("src.bin", nil)
-		slow := f.start("slow", peerOpts{seedFile: src, listener: newImpairedListener(t, impairment{bytesPerSec: 16 << 10})})
-		fast := f.start("fast", peerOpts{seedFile: src, listener: newImpairedListener(t, impairment{bytesPerSec: 1 << 20})})
+		slow := f.start("slow", peerOpts{seedFile: src, listener: impaired(t, faultnet.Impairment{BytesPerSec: 16 << 10})})
+		fast := f.start("fast", peerOpts{seedFile: src, listener: impaired(t, faultnet.Impairment{BytesPerSec: 1 << 20})})
 		d := f.start("d", peerOpts{
 			peers: []string{slow.addr(), fast.addr()},
 			ccfg: func(c *coordinator.Config) {
@@ -308,7 +317,7 @@ func TestUploadQueueCapRejectsBusyWithoutPenalty(t *testing.T) {
 	f := newFixture(t, 512<<10)
 	seed := f.start("seed", peerOpts{
 		seedFile: f.writeSource("src.bin", nil),
-		listener: newImpairedListener(t, impairment{bytesPerSec: 2 << 20}),
+		listener: impaired(t, faultnet.Impairment{BytesPerSec: 2 << 20}),
 		ccfg:     func(c *coordinator.Config) { c.UploadQueueCap = 2 },
 	})
 	var ds []*testPeer
@@ -377,7 +386,7 @@ func TestCorruptedPieceIsRejected(t *testing.T) {
 	f := newFixture(t, 512<<10)
 	src := f.writeSource("src.bin", nil)
 	// Flip one byte well past the handshake and BITFIELD, inside some PIECE payload.
-	bad := f.start("bad", peerOpts{seedFile: src, listener: newImpairedListener(t, impairment{corruptAt: 100 << 10})})
+	bad := f.start("bad", peerOpts{seedFile: src, listener: impaired(t, faultnet.Impairment{CorruptAt: 100 << 10})})
 	good := f.start("good", peerOpts{seedFile: src})
 	d := f.start("d", peerOpts{peers: []string{bad.addr(), good.addr()}})
 	f.waitComplete(30*time.Second, d)
