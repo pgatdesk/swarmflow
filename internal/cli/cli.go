@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"runtime/pprof"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -172,6 +173,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	logJSON := fs.Bool("log-json", false, "structured JSON logs")
 	statsOut := fs.String("stats-out", "", "write the final status as JSON to this file on exit")
 	eventsOut := fs.String("events-out", "", "write the event log as JSON to this file on exit")
+	memProfile := fs.String("memprofile", "", "write a Go heap profile to this file on exit (diagnostics)")
 	noVerify := fs.Bool("no-verify", false, "seed: skip the startup hash check and serve the file as complete (receivers still verify every piece)")
 	apiListen := fs.String("api-listen", "127.0.0.1:0", "monitoring API address (/metrics, /api/status, /api/events); empty disables")
 	maxUp := fs.String("max-upload-rate", "0", "cap total upload payload per second, e.g. 2MiB (0: unlimited)")
@@ -324,8 +326,18 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	cancel()
 	wg.Wait()
 	if *statsOut != "" {
-		if err := writeJSONFile(*statsOut, co.Status()); err != nil {
+		s := *co.Status() // a copy: published snapshots are immutable
+		s.Process = &coordinator.ProcessInfo{PeakRSSMiB: peakRSSMiB()}
+		if err := writeJSONFile(*statsOut, &s); err != nil {
 			log.Error("writing -stats-out failed", "err", err)
+		}
+	}
+	if *memProfile != "" {
+		if f, err := os.Create(*memProfile); err == nil {
+			pprof.Lookup("allocs").WriteTo(f, 0) // allocations since start, plus live heap
+			f.Close()
+		} else {
+			log.Error("writing -memprofile failed", "err", err)
 		}
 	}
 	if *eventsOut != "" {

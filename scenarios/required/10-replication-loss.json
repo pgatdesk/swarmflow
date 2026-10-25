@@ -1,6 +1,6 @@
 {
     "name":  "10-replication-loss",
-    "description":  "Required scenario 10: s1 keeps 3 verified copies (-replicas 3) on replica holders r1-r3. r1 is killed at 12 s (copies lost, must be re-created on r2/r3). The original seeder is killed at 17 s and a downloader joins at 18 s, so the download can only complete from the replicas.",
+    "description":  "Required scenario 10: s1 keeps 3 verified copies (-replicas 3) on replica holders r1-r3. r1 is killed at 12 s (copies lost, must be re-created on r2/r3). The original seeder leaves (graceful stop) at 17 s and a downloader joins at 18 s, so the download can only complete from the replicas.",
     "file_size":  "32MiB",
     "piece_size":  "256KiB",
     "data_seed":  31,
@@ -68,7 +68,7 @@
                    },
                    {
                        "peer":  "s1",
-                       "action":  "kill",
+                       "action":  "stop",
                        "at":  "17s"
                    }
                ]

@@ -56,10 +56,17 @@ type Status struct {
 	FirstPeerAt time.Time `json:"first_peer_at,omitzero"`
 	// FirstPieceAt is when this run persisted its first piece (time to first data).
 	FirstPieceAt time.Time `json:"first_piece_at,omitzero"`
+	// Process is set only in -stats-out files.
+	Process *ProcessInfo `json:"process,omitempty"`
 	// Resume describes what this run recovered from durable state, if anything.
 	Resume     *ResumeInfo  `json:"resume,omitempty"`
 	FinishedAt time.Time    `json:"finished_at,omitzero"`
 	Peers      []PeerStatus `json:"peers"`
+}
+
+// ProcessInfo is filled in by the hosting process when it writes final stats.
+type ProcessInfo struct {
+	PeakRSSMiB float64 `json:"peak_rss_mib"` // from the kernel's own accounting (Linux VmHWM)
 }
 
 // ResumeInfo records what was recovered from durable state at startup.

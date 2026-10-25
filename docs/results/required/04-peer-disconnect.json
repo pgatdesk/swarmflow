@@ -1,0 +1,821 @@
+{
+  "scenario": {
+    "name": "04-peer-disconnect",
+    "description": "Required scenario 4: the fastest of three seeders (40/20/10 Mbit/s) is killed (SIGKILL) 5 s in; its outstanding requests must be reassigned.",
+    "file_size": "64MiB",
+    "piece_size": "256KiB",
+    "data_seed": 31,
+    "timeout": "5m0s",
+    "peers": [
+      {
+        "name": "s1",
+        "role": "seed",
+        "link": {
+          "rate": "40mbit",
+          "delay": "10ms"
+        }
+      },
+      {
+        "name": "s2",
+        "role": "seed",
+        "link": {
+          "rate": "20mbit",
+          "delay": "20ms"
+        }
+      },
+      {
+        "name": "s3",
+        "role": "seed",
+        "link": {
+          "rate": "10mbit",
+          "delay": "30ms"
+        }
+      },
+      {
+        "name": "d1",
+        "role": "get",
+        "link": {
+          "rate": "200mbit",
+          "delay": "5ms"
+        },
+        "start_at": "1s"
+      },
+      {
+        "name": "d2",
+        "role": "get",
+        "link": {
+          "rate": "200mbit",
+          "delay": "5ms"
+        },
+        "start_at": "1s"
+      }
+    ],
+    "events": [
+      {
+        "at": "5s",
+        "peer": "s1",
+        "action": "kill"
+      }
+    ],
+    "variants": [
+      {
+        "name": "default",
+        "args": []
+      }
+    ]
+  },
+  "started": "2026-10-26T00:33:30.693520506+05:30",
+  "finished": "2026-10-26T00:35:00.47729623+05:30",
+  "trials": [
+    {
+      "variant": "default",
+      "trial": 1,
+      "wall_s": 19.318188752,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "killed",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 0,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.19731,
+          "max_rss_mib": 17.76953125
+        },
+        {
+          "name": "s2",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 39059456,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.318205,
+          "max_rss_mib": 17.53515625
+        },
+        {
+          "name": "s3",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 20447232,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.289758,
+          "max_rss_mib": 17.46484375
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 17.303223553,
+          "from_first_start_s": 17.835542596,
+          "throughput_mibps": 3.5883405091557665,
+          "time_to_first_piece_s": 0.340525348,
+          "bytes_down": 67108864,
+          "bytes_up": 37748736,
+          "requests": 260,
+          "timeouts": 0,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d2": 20447232,
+            "s1": 9699328,
+            "s2": 24641536,
+            "s3": 12320768
+          },
+          "cpu_s": 1.200096,
+          "max_rss_mib": 21.90234375
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 16.792916681,
+          "from_first_start_s": 17.337747896,
+          "throughput_mibps": 3.6913675515356568,
+          "time_to_first_piece_s": 0.388170824,
+          "bytes_down": 67108864,
+          "bytes_up": 20447232,
+          "requests": 260,
+          "timeouts": 0,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 37748736,
+            "s1": 6815744,
+            "s2": 14417920,
+            "s3": 8126464
+          },
+          "cpu_s": 0.976484,
+          "max_rss_mib": 20.72265625
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "kill",
+          "at": "2026-10-26T00:33:35.795342888+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 0.288237743
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 0.260421483
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s2",
+          "target": "s1",
+          "seconds": 0.228815205
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s3",
+          "target": "s1",
+          "seconds": 0.23887907
+        }
+      ]
+    },
+    {
+      "variant": "default",
+      "trial": 2,
+      "wall_s": 18.478743043,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "killed",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 0,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.237542,
+          "max_rss_mib": 16.84375
+        },
+        {
+          "name": "s2",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 37748736,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.337042,
+          "max_rss_mib": 16.8828125
+        },
+        {
+          "name": "s3",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 19922944,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.308487,
+          "max_rss_mib": 17.65625
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 16.42870434,
+          "from_first_start_s": 16.548707172,
+          "throughput_mibps": 3.8673715919202682,
+          "time_to_first_piece_s": 0.313891283,
+          "bytes_down": 67108864,
+          "bytes_up": 42467328,
+          "requests": 260,
+          "timeouts": 0,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d2": 15728640,
+            "s1": 12582912,
+            "s2": 26738688,
+            "s3": 12058624
+          },
+          "cpu_s": 1.251567,
+          "max_rss_mib": 20.58984375
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 17.074806394,
+          "from_first_start_s": 17.199253457,
+          "throughput_mibps": 3.7210917415693037,
+          "time_to_first_piece_s": 0.354756075,
+          "bytes_down": 67108864,
+          "bytes_up": 15728640,
+          "requests": 260,
+          "timeouts": 0,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 42467328,
+            "s1": 5767168,
+            "s2": 11010048,
+            "s3": 7864320
+          },
+          "cpu_s": 0.965297,
+          "max_rss_mib": 20.3359375
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "kill",
+          "at": "2026-10-26T00:33:54.459089687+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 0.277683405
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 0.271456839
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s2",
+          "target": "s1",
+          "seconds": 0.238582509
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s3",
+          "target": "s1",
+          "seconds": 0.248549045
+        }
+      ]
+    },
+    {
+      "variant": "default",
+      "trial": 3,
+      "wall_s": 17.511695549,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "killed",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 0,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.198133,
+          "max_rss_mib": 16.63671875
+        },
+        {
+          "name": "s2",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 36438016,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.297367,
+          "max_rss_mib": 17.484375
+        },
+        {
+          "name": "s3",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 18874368,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.261715,
+          "max_rss_mib": 17.6484375
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 15.525971253,
+          "from_first_start_s": 15.618783781,
+          "throughput_mibps": 4.097630193066311,
+          "time_to_first_piece_s": 0.315244067,
+          "bytes_down": 67108864,
+          "bytes_up": 43778048,
+          "requests": 259,
+          "timeouts": 0,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d2": 16252928,
+            "s1": 13107200,
+            "s2": 25952256,
+            "s3": 11796480
+          },
+          "cpu_s": 1.277016,
+          "max_rss_mib": 20.63671875
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 15.083727252,
+          "from_first_start_s": 15.180208636,
+          "throughput_mibps": 4.216015835791837,
+          "time_to_first_piece_s": 0.354608059,
+          "bytes_down": 67108864,
+          "bytes_up": 16252928,
+          "requests": 260,
+          "timeouts": 0,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 43778048,
+            "s1": 5767168,
+            "s2": 10485760,
+            "s3": 7077888
+          },
+          "cpu_s": 0.873373,
+          "max_rss_mib": 20.40234375
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "kill",
+          "at": "2026-10-26T00:34:12.875347153+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 0.269039543
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 0.272534317
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s2",
+          "target": "s1",
+          "seconds": 0.235470944
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s3",
+          "target": "s1",
+          "seconds": 0.245478596
+        }
+      ]
+    },
+    {
+      "variant": "default",
+      "trial": 4,
+      "wall_s": 18.834768917,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "killed",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 0,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.251496,
+          "max_rss_mib": 16.95703125
+        },
+        {
+          "name": "s2",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 38535168,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.345533,
+          "max_rss_mib": 19.09375
+        },
+        {
+          "name": "s3",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 20447232,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.310325,
+          "max_rss_mib": 16.9765625
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 17.295665026,
+          "from_first_start_s": 17.39191537,
+          "throughput_mibps": 3.679870712250367,
+          "time_to_first_piece_s": 0.310512891,
+          "bytes_down": 67108864,
+          "bytes_up": 41418752,
+          "requests": 259,
+          "timeouts": 0,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d2": 14942208,
+            "s1": 13107200,
+            "s2": 26738688,
+            "s3": 12320768
+          },
+          "cpu_s": 1.270758,
+          "max_rss_mib": 20.5625
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 17.511086289,
+          "from_first_start_s": 17.611547485,
+          "throughput_mibps": 3.633979356698194,
+          "time_to_first_piece_s": 0.351843515,
+          "bytes_down": 67108864,
+          "bytes_up": 14942208,
+          "requests": 260,
+          "timeouts": 0,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 41418752,
+            "s1": 5767168,
+            "s2": 11796480,
+            "s3": 8126464
+          },
+          "cpu_s": 0.99567,
+          "max_rss_mib": 20.3515625
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "kill",
+          "at": "2026-10-26T00:34:29.722468039+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 0.264813021
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 0.268030737
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s2",
+          "target": "s1",
+          "seconds": 0.236605755
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s3",
+          "target": "s1",
+          "seconds": 0.246620775
+        }
+      ]
+    },
+    {
+      "variant": "default",
+      "trial": 5,
+      "wall_s": 17.730755209,
+      "peers": [
+        {
+          "name": "s1",
+          "role": "seed",
+          "exit": "killed",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 0,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.201294,
+          "max_rss_mib": 17.09765625
+        },
+        {
+          "name": "s2",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 36700160,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.299035,
+          "max_rss_mib": 16.34375
+        },
+        {
+          "name": "s3",
+          "role": "seed",
+          "exit": "ok",
+          "runs": 1,
+          "completed": false,
+          "bytes_down": 0,
+          "bytes_up": 19136512,
+          "requests": 0,
+          "timeouts": 0,
+          "reassigned": 0,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "cpu_s": 0.258363,
+          "max_rss_mib": 17.046875
+        },
+        {
+          "name": "d1",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 15.496107148,
+          "from_first_start_s": 15.591877848,
+          "throughput_mibps": 4.104701218410931,
+          "time_to_first_piece_s": 0.310447731,
+          "bytes_down": 67108864,
+          "bytes_up": 43253760,
+          "requests": 259,
+          "timeouts": 0,
+          "reassigned": 3,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d2": 16252928,
+            "s1": 13107200,
+            "s2": 25952256,
+            "s3": 11796480
+          },
+          "cpu_s": 1.205692,
+          "max_rss_mib": 20.80859375
+        },
+        {
+          "name": "d2",
+          "role": "get",
+          "exit": "ok",
+          "runs": 1,
+          "completed": true,
+          "completion_s": 15.712549802,
+          "from_first_start_s": 15.812317232,
+          "throughput_mibps": 4.047477612609537,
+          "time_to_first_piece_s": 0.351810347,
+          "bytes_down": 67108864,
+          "bytes_up": 16252928,
+          "requests": 260,
+          "timeouts": 0,
+          "reassigned": 4,
+          "rejected_pieces": 0,
+          "banned": 0,
+          "endgame_requests": 0,
+          "busy_received": 0,
+          "sources": {
+            "d1": 43253760,
+            "s1": 5767168,
+            "s2": 10747904,
+            "s3": 7340032
+          },
+          "cpu_s": 0.903807,
+          "max_rss_mib": 20.140625
+        }
+      ],
+      "applied_events": [
+        {
+          "peer": "s1",
+          "action": "kill",
+          "at": "2026-10-26T00:34:48.548759932+05:30"
+        }
+      ],
+      "observations": [
+        {
+          "kind": "detect_failure",
+          "peer": "d1",
+          "target": "s1",
+          "seconds": 0.26845566
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "d2",
+          "target": "s1",
+          "seconds": 0.271621344
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s2",
+          "target": "s1",
+          "seconds": 0.234820847
+        },
+        {
+          "kind": "detect_failure",
+          "peer": "s3",
+          "target": "s1",
+          "seconds": 0.244832803
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+    "name":  "13-seed-departs",
+    "description":  "Extra (validates decision 0003 on a real network): one 40 Mbit/s seed and eight downloaders with 10 Mbit/s uplinks. The seed leaves after 20 s (about 1.5 copies uploaded); downloaders can only finish if, between them, they already hold every piece. In simulation, without the upload admission cap, no downloader finished.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "150s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "10ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "10ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d3",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "15ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d4",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "20ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d5",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "25ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d6",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "30ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d7",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "35ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d8",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "40ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "events":  [
+                   {
+                       "at":  "20s",
+                       "peer":  "s1",
+                       "action":  "stop"
+                   }
+               ],
+    "variants":  [
+                     {
+                         "name":  "cap16",
+                         "args":  [
+
+                                  ],
+                         "role_args":  {
+                                           "*":  [
+                                                     "-upload-queue",
+                                                     "16"
+                                                 ]
+                                       }
+                     },
+                     {
+                         "name":  "no-cap",
+                         "args":  [
+
+                                  ],
+                         "role_args":  {
+                                           "*":  [
+                                                     "-upload-queue",
+                                                     "0"
+                                                 ]
+                                       }
+                     }
+                 ]
+}

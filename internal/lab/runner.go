@@ -121,32 +121,68 @@ func seedFile(src string, m *manifest.Manifest, has string) (string, error) {
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	}
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return "", err
-	}
+	// Patch only the affected pieces of a streamed copy: the lab never holds the
+	// whole file in memory (its RSS would otherwise be counted in children's rusage).
+	var patch func(f *os.File) error
 	if pct, ok := strings.CutPrefix(has, "corrupt:"); ok {
 		var p float64
 		if _, err := fmt.Sscanf(pct, "%g%%", &p); err != nil || p <= 0 || p > 100 {
 			return "", fmt.Errorf("bad has %q", has)
 		}
 		every := max(int(100/p+0.5), 1)
-		for i := 0; i < m.NumPieces(); i += every {
-			data[m.PieceOffset(i)+int64(m.PieceLen(i)/2)] ^= 0xFF
+		patch = func(f *os.File) error {
+			b := make([]byte, 1)
+			for i := 0; i < m.NumPieces(); i += every {
+				off := m.PieceOffset(i) + int64(m.PieceLen(i)/2)
+				if _, err := f.ReadAt(b, off); err != nil {
+					return err
+				}
+				b[0] ^= 0xFF
+				if _, err := f.WriteAt(b, off); err != nil {
+					return err
+				}
+			}
+			return nil
 		}
 	} else {
 		keep, err := pieceFilter(has, m.NumPieces())
 		if err != nil {
 			return "", err
 		}
-		for i := range m.NumPieces() {
-			if !keep(i) {
-				off := m.PieceOffset(i)
-				clear(data[off : off+int64(m.PieceLen(i))])
+		patch = func(f *os.File) error {
+			zeros := make([]byte, m.PieceSize())
+			for i := range m.NumPieces() {
+				if !keep(i) {
+					if _, err := f.WriteAt(zeros[:m.PieceLen(i)], m.PieceOffset(i)); err != nil {
+						return err
+					}
+				}
 			}
+			return nil
 		}
 	}
-	return path, os.WriteFile(path, data, 0o644)
+	in, err := os.Open(src)
+	if err != nil {
+		return "", err
+	}
+	defer in.Close()
+	tmp := path + ".tmp"
+	out, err := os.Create(tmp)
+	if err != nil {
+		return "", err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return "", err
+	}
+	if err := patch(out); err != nil {
+		out.Close()
+		return "", err
+	}
+	if err := out.Close(); err != nil {
+		return "", err
+	}
+	return path, os.Rename(tmp, path)
 }
 
 func pieceFilter(has string, n int) (func(int) bool, error) {
@@ -614,6 +650,11 @@ func (p *proc) result(m *manifest.Manifest, ipName map[string]string, timedOut b
 	r.Reassigned, r.Banned = s.Counters.Reassigned, s.Counters.Banned
 	r.EndgameRequests, r.BusyReceived = s.Counters.EndgameRequests, s.Counters.BusyReceived
 	r.Resume = s.Resume
+	if s.Process != nil && s.Process.PeakRSSMiB > 0 {
+		// The process's own peak; rusage from Wait can include the lab's memory
+		// shared before exec (Go starts children with a vfork-style clone).
+		r.MaxRSSMiB = s.Process.PeakRSSMiB
+	}
 	if s.Replication.Target > 1 || s.Replication.Accepting {
 		repl := s.Replication
 		r.Replication = &repl
