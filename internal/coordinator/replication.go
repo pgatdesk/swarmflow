@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"fmt"
 	"time"
 
+	"github.com/pgatdesk/swarmflow/internal/events"
 	"github.com/pgatdesk/swarmflow/internal/protocol"
 )
 
@@ -213,6 +215,8 @@ func (co *Coordinator) onProof(p *peer, m protocol.Proof, now time.Time) {
 	}
 	co.repl.counters.ProofsFailed++
 	co.log.Warn("possession proof failed: peer claims a piece it does not hold", "peer", p.id.Short(), "piece", k.piece)
+	co.emit(events.ProofFailed, fmt.Sprintf("%s failed the possession proof for piece %d; its claim is not counted as a replica",
+		p.id.Short(), k.piece), map[string]any{"remote": p.id.Short(), "piece": k.piece})
 	co.onInvalid(p, now)
 }
 
@@ -369,8 +373,12 @@ func (co *Coordinator) replicate(now time.Time) {
 	}
 	if under > 0 && co.repl.under == 0 {
 		co.log.Info("pieces under-replicated", "pieces", under, "target_copies", rc.Factor)
+		co.emit(events.UnderReplicated, fmt.Sprintf("%d pieces have fewer than %d verified copies elsewhere; challenging holders and offering replicas",
+			under, target), map[string]any{"pieces": under, "target_copies": rc.Factor})
 	} else if under == 0 && co.repl.under > 0 {
 		co.log.Info("replication target reached", "target_copies", rc.Factor)
+		co.emit(events.ReplicationTarget, fmt.Sprintf("every held piece has %d verified copies elsewhere (target %d including ours)",
+			target, rc.Factor), map[string]any{"target_copies": rc.Factor})
 	}
 	co.repl.under = under
 }

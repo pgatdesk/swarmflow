@@ -1,0 +1,20 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: swarmflow-prom
+    type: prometheus
+    access: proxy
+    url: http://127.0.0.1:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 2s
+
+  # The hub's JSON endpoints (topology, peers, explained events) via the
+  # Infinity plugin, restricted to the hub's address.
+  - name: SwarmFlow Hub
+    uid: swarmflow-hub
+    type: yesoreyeram-infinity-datasource
+    jsonData:
+      allowedHosts:
+        - http://127.0.0.1:7100

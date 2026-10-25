@@ -22,6 +22,7 @@ type uploader struct {
 	// queued counts requests accepted but not yet finished across all of the
 	// swarm's uploaders; the coordinator compares it with UploadQueueCap.
 	queued *atomic.Int32
+	limit  *rateLimiter // shared upload rate cap; nil = unlimited
 	log    *slog.Logger
 
 	mu sync.Mutex
@@ -31,9 +32,9 @@ type uploader struct {
 	closed  bool
 }
 
-func newUploader(c *conn.Conn, st *store.Store, slots int, sent *atomic.Int64, queued *atomic.Int32, log *slog.Logger) *uploader {
+func newUploader(c *conn.Conn, st *store.Store, slots int, sent *atomic.Int64, queued *atomic.Int32, limit *rateLimiter, log *slog.Logger) *uploader {
 	return &uploader{c: c, st: st, q: make(chan protocol.Request, slots), slots: slots, sent: sent, queued: queued,
-		log: log, pending: make(map[uint32]bool)}
+		limit: limit, log: log, pending: make(map[uint32]bool)}
 }
 
 // enqueue reports false if all upload slots are taken, the ID is already
@@ -102,6 +103,9 @@ func (u *uploader) serve(ctx context.Context, r protocol.Request, cancelled bool
 		u.log.Error("upload read failed", "piece", r.Piece, "err", err)
 		u.c.SendControl(protocol.Reject{ReqID: r.ReqID, Reason: protocol.RejectNotHave})
 		return true
+	}
+	if err := u.limit.wait(ctx, len(data)); err != nil {
+		return false
 	}
 	if err := u.c.SendData(ctx, protocol.Piece{ReqID: r.ReqID, Piece: r.Piece, Data: data}); err != nil {
 		return false

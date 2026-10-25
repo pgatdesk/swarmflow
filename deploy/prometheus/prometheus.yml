@@ -1,0 +1,12 @@
+# Prometheus for SwarmFlow. Peers are discovered through swarmflow-hub, which
+# lists every peer the tracker knows about that exposes a monitoring API.
+global:
+  scrape_interval: 2s
+  evaluation_interval: 2s
+
+scrape_configs:
+  - job_name: swarmflow
+    scrape_timeout: 1s
+    http_sd_configs:
+      - url: http://127.0.0.1:7100/sd
+        refresh_interval: 5s

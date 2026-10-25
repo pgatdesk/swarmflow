@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -147,6 +148,34 @@ func TestAdaptiveExploreNewOnlyStopsOnceMeasured(t *testing.T) {
 		if a.Select(0, 1<<18, []Candidate{fast, slow}) == 1 {
 			t.Fatal("measured slow peer still chosen for exploration")
 		}
+	}
+}
+
+func TestExplainUsesTheSameInputs(t *testing.T) {
+	size := 256 << 10
+	cs := []Candidate{cand(1, 2e6, 0, 1, 3, 10), cand(2, 1e6, 20*time.Millisecond, 1, 0, 10)}
+	a := NewAdaptivePeer(1, 0)
+	got := a.Select(0, size, cs)
+	ex := Explain("adaptive", size, cs, got)
+	if ex.Chosen.Peer != cs[got].Peer.Short() || ex.RunnerUp == nil || ex.RunnerUp.Peer == ex.Chosen.Peer {
+		t.Fatalf("explanation %+v for choice %d", ex, got)
+	}
+	if ex.Chosen.ExpectedS > ex.RunnerUp.ExpectedS {
+		t.Fatalf("chosen cost %.3f above runner-up %.3f without exploration", ex.Chosen.ExpectedS, ex.RunnerUp.ExpectedS)
+	}
+	if !strings.Contains(ex.Reason, "lowest expected completion") {
+		t.Fatalf("reason %q", ex.Reason)
+	}
+	// A choice against the cost order can only be exploration.
+	other := 1 - got
+	if r := Explain("adaptive", size, cs, other).Reason; !strings.HasPrefix(r, "exploration") {
+		t.Fatalf("non-minimal choice explained as %q", r)
+	}
+	if r := Explain("fastest", size, cs, 0).Reason; !strings.Contains(r, "2.0 MB/s") {
+		t.Fatalf("fastest reason %q", r)
+	}
+	if ex := Explain("random", size, cs, 1); ex.RunnerUp != nil || !strings.Contains(ex.Reason, "2 eligible") {
+		t.Fatalf("random explanation %+v", ex)
 	}
 }
 

@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"net/netip"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/pgatdesk/swarmflow/internal/bitfield"
 	"github.com/pgatdesk/swarmflow/internal/conn"
+	"github.com/pgatdesk/swarmflow/internal/events"
 	"github.com/pgatdesk/swarmflow/internal/manifest"
 	"github.com/pgatdesk/swarmflow/internal/peerstats"
 	"github.com/pgatdesk/swarmflow/internal/protocol"
@@ -65,6 +68,12 @@ type Config struct {
 	// replicas, instead of downloading the whole file.
 	ReplicaOnly bool
 	Replication ReplicationConfig
+	// Events, if set, receives an explained record of decisions and failures.
+	Events *events.Ring
+	// Observer, if set, receives every request's outcome and latency.
+	Observer Observer
+	// MaxUploadRate caps total upload payload in bytes/s (0 = unlimited).
+	MaxUploadRate float64
 }
 
 // Journal durably records download progress. PiecePersisted is called from a
@@ -172,6 +181,7 @@ type Coordinator struct {
 	peerCount    atomic.Int32
 	bytesUp      atomic.Int64
 	uploadQueued atomic.Int32
+	uploadLimit  *rateLimiter
 	status       atomic.Pointer[Status]
 
 	// Everything below is owned by the Run goroutine.
@@ -231,6 +241,7 @@ func New(m *manifest.Manifest, st *store.Store, have bitfield.Bitfield, self pro
 		wanted:      bitfield.New(n),
 		repl:        newReplication(n),
 		contrib:     make(map[protocol.PeerID]*SourceStatus),
+		uploadLimit: newRateLimiter(cfg.MaxUploadRate),
 		// Bounded: a busy proof worker drops challenge answers rather than
 		// queueing disk reads without limit.
 		proofJobs:    make(chan proofJob, 64),
@@ -269,6 +280,17 @@ func (co *Coordinator) OnDiscovered(f func([]netip.AddrPort)) { co.discovered = 
 func (co *Coordinator) Connected(id protocol.PeerID) bool {
 	_, ok := co.connected.Load(id)
 	return ok
+}
+
+// ConnectedAddr reports whether a connected peer listens at addr, so that
+// addresses learned without a peer ID (PEX) are not dialed twice.
+func (co *Coordinator) ConnectedAddr(addr string) bool {
+	found := false
+	co.connected.Range(func(_, v any) bool {
+		found = v.(netip.AddrPort).String() == addr
+		return !found
+	})
+	return found
 }
 
 // AddConn hands a handshaken connection to the coordinator.
@@ -374,7 +396,7 @@ func (co *Coordinator) onConn(ctx context.Context, c *conn.Conn) {
 			return
 		}
 		old.c.Close(protocol.ByeDuplicate)
-		co.removePeer(old, nil)
+		co.removePeer(old, errReplacedDuplicate)
 	}
 	if len(co.peers) >= co.cfg.MaxPeers {
 		reject(protocol.ByeOverloaded)
@@ -387,7 +409,7 @@ func (co *Coordinator) onConn(ctx context.Context, c *conn.Conn) {
 		stopUpload:      stop,
 		acceptsReplicas: c.RemoteFlags()&protocol.FlagAcceptReplicas != 0,
 	}
-	p.up = newUploader(c, co.st, co.cfg.UploadSlots, &co.bytesUp, &co.uploadQueued, co.log)
+	p.up = newUploader(c, co.st, co.cfg.UploadSlots, &co.bytesUp, &co.uploadQueued, co.uploadLimit, co.log)
 	co.peers[id] = p
 	co.peerList = append(co.peerList, p)
 	co.connected.Store(id, c.ListenAddr())
@@ -397,6 +419,12 @@ func (co *Coordinator) onConn(ctx context.Context, c *conn.Conn) {
 	c.SendControl(protocol.Bitfield{Bits: co.have.Bytes()})
 	co.sendPEX(p, time.Now())
 	co.log.Info("peer connected", "peer", id.Short(), "addr", c.RemoteAddr().String(), "outbound", c.Outbound())
+	dir := "inbound"
+	if c.Outbound() {
+		dir = "outbound"
+	}
+	co.emit(events.PeerConnected, fmt.Sprintf("connected to %s at %s (%s)", id.Short(), c.ListenAddr(), dir),
+		map[string]any{"remote": id.Short(), "addr": c.ListenAddr().String(), "outbound": c.Outbound()})
 	if j := co.cfg.Journal; j != nil && c.ListenAddr().IsValid() && c.ListenAddr().Port() != 0 {
 		addr := c.ListenAddr().String()
 		go func() {
@@ -449,6 +477,8 @@ func (co *Coordinator) onPEX(p *peer, m protocol.PEX, now time.Time) {
 	}
 }
 
+var errReplacedDuplicate = errors.New("replaced by a duplicate connection to the same peer")
+
 // preferNew decides between two connections to the same peer. Both ends keep
 // the connection initiated by the peer with the lower ID, so they agree.
 func (co *Coordinator) preferNew(old, nw *conn.Conn) bool {
@@ -493,6 +523,13 @@ func (co *Coordinator) removePeer(p *peer, err error) {
 		attrs = append(attrs, "reason", err.Error())
 	}
 	co.log.Info("peer disconnected", attrs...)
+	msg := fmt.Sprintf("disconnected from %s; %d outstanding requests reassigned", p.id.Short(), reassigned)
+	fields := map[string]any{"remote": p.id.Short(), "reassigned": reassigned, "pieces_from": p.piecesFrom}
+	if err != nil {
+		msg += " (" + err.Error() + ")"
+		fields["reason"] = err.Error()
+	}
+	co.emit(events.PeerDisconnected, msg, fields)
 }
 
 func (co *Coordinator) closePeer(p *peer, reason protocol.ByeReason) {
@@ -595,12 +632,16 @@ func (co *Coordinator) onPiece(p *peer, m protocol.Piece, now time.Time) {
 	co.finishRequest(r)
 	if len(m.Data) != co.m.PieceLen(r.piece) {
 		co.log.Warn("piece rejected: wrong length", "peer", p.id.Short(), "piece", r.piece, "len", len(m.Data))
+		co.observe(OutcomeInvalid, now.Sub(r.sent))
+		co.emit(events.PieceRejected, fmt.Sprintf("piece %d from %s rejected: %d bytes, expected %d; re-requesting",
+			r.piece, p.id.Short(), len(m.Data), co.m.PieceLen(r.piece)), map[string]any{"piece": r.piece, "remote": p.id.Short()})
 		co.counters.Rejected++
 		co.onInvalid(p, now)
 		co.releasePiece(r.piece)
 		return
 	}
 	p.stats.OnSuccess(now, r.sent, len(m.Data))
+	co.observe(OutcomeOK, now.Sub(r.sent))
 	if s := co.state[r.piece]; s == stVerifying || s == stPersisted {
 		p.duplicates++ // another copy already won; drop this one
 		co.counters.DuplicatePieces++
@@ -637,11 +678,13 @@ func (co *Coordinator) onReject(p *peer, m protocol.Reject, now time.Time) {
 	switch m.Reason {
 	case protocol.RejectBusy:
 		// Backpressure, not failure: try others now and this peer again shortly.
+		co.observe(OutcomeBusy, now.Sub(r.sent))
 		p.stats.OnBusy(now)
 		co.counters.BusyReceived++
 		jitter := time.Duration(rand.Int64N(int64(co.cfg.BusyBackoff)/2+1)) - co.cfg.BusyBackoff/4
 		p.busyUntil = now.Add(co.cfg.BusyBackoff + jitter)
 	default:
+		co.observe(OutcomeRejected, now.Sub(r.sent))
 		p.stats.OnReject(now)
 		if m.Reason == protocol.RejectNotHave && p.has.Has(r.piece) {
 			p.has.Clear(r.piece)
@@ -666,6 +709,8 @@ func (co *Coordinator) ban(id protocol.PeerID, now time.Time) bool {
 	co.banned[id] = now
 	co.counters.Banned++
 	co.log.Warn("peer banned for repeated invalid pieces", "peer", id.Short())
+	co.emit(events.PeerBanned, fmt.Sprintf("banned %s: %d invalid pieces or proofs within %s", id.Short(),
+		co.cfg.Stats.InvalidForBan, co.cfg.Stats.InvalidWindow), map[string]any{"remote": id.Short()})
 	return true
 }
 
@@ -676,6 +721,9 @@ func (co *Coordinator) onVerified(r verify.Result, now time.Time) {
 	case !r.Valid:
 		co.counters.Rejected++
 		co.log.Warn("piece rejected: hash mismatch", "peer", r.From.Short(), "piece", i)
+		co.observe(OutcomeInvalid, r.Latency)
+		co.emit(events.PieceRejected, fmt.Sprintf("piece %d from %s failed SHA-256 verification; re-requesting", i, r.From.Short()),
+			map[string]any{"piece": i, "remote": r.From.Short()})
 		if p := co.peers[r.From]; p != nil {
 			co.onInvalid(p, now)
 		} else if s := co.stats[r.From]; s != nil && s.OnInvalid(now) {
@@ -731,6 +779,10 @@ func (co *Coordinator) onComplete() {
 	}
 	co.log.Info("download complete", "path", co.st.Path(), "elapsed", co.finished.Sub(co.started).Round(time.Millisecond),
 		"bytes", co.m.Size(), "rejected_pieces", co.counters.Rejected, "endgame_requests", co.counters.EndgameRequests)
+	elapsed := co.finished.Sub(co.started)
+	co.emit(events.DownloadComplete, fmt.Sprintf("download complete: %d MiB in %s (%.1f MiB/s), %d rejected pieces, %d endgame duplicates",
+		co.m.Size()>>20, dur(elapsed), float64(co.m.Size())/(1<<20)/elapsed.Seconds(), co.counters.Rejected, co.counters.EndgameRequests),
+		map[string]any{"elapsed_s": elapsed.Seconds(), "bytes": co.m.Size()})
 	co.publishStatus(co.finished)
 	close(co.complete)
 }
@@ -754,16 +806,28 @@ func (co *Coordinator) checkTimeouts(now time.Time) {
 		if now.Before(r.deadline) {
 			continue
 		}
+		wasCooling := r.peer.stats.InCooldown(now)
 		r.peer.stats.OnTimeout(now)
 		r.peer.c.SendControl(protocol.Cancel{ReqID: r.id})
 		co.finishRequest(r)
 		co.releasePiece(r.piece)
 		co.counters.Timeouts++
+		co.observe(OutcomeTimeout, now.Sub(r.sent))
 		attrs := []any{"peer", r.peer.id.Short(), "piece", r.piece, "after", now.Sub(r.sent).Round(time.Millisecond)}
 		if r.peer.stats.InCooldown(now) {
 			attrs = append(attrs, "cooldown_until", r.peer.stats.CooldownUntil().Format(time.TimeOnly))
 		}
 		co.log.Info("request timed out; piece will be reassigned", attrs...)
+		id := r.peer.id.Short()
+		co.emit(events.RequestTimeout, fmt.Sprintf("request for piece %d to %s timed out after %s (deadline %s); reassigning",
+			r.piece, id, dur(now.Sub(r.sent)), dur(r.deadline.Sub(r.sent))),
+			map[string]any{"piece": r.piece, "remote": id, "reliability": r.peer.stats.Reliability()})
+		if !wasCooling && r.peer.stats.InCooldown(now) {
+			until := r.peer.stats.CooldownUntil()
+			co.emit(events.PeerCooldown, fmt.Sprintf("%s deprioritised for %s after %d consecutive timeouts (reliability %.2f)",
+				id, dur(until.Sub(now)), co.cfg.Stats.TimeoutsForCooldown, r.peer.stats.Reliability()),
+				map[string]any{"remote": id, "until": until})
+		}
 	}
 }
 
@@ -811,21 +875,24 @@ func (co *Coordinator) Needed(i int) bool {
 }
 func (co *Coordinator) Availability(i int) int { return co.avail[i] }
 
-// usable reports whether p may receive a new request for piece.
-func (co *Coordinator) usable(p *peer, piece int, now time.Time) bool {
-	return !p.closing && p.gotBitfield && p.has.Has(piece) && len(p.outstanding) < co.cfg.MaxPerPeer &&
-		!now.Before(p.busyUntil)
-}
-
-// sources returns the candidates for piece, excluding peers in skip. Peers in
+// sources returns the candidates for piece, excluding peers in skip, and (when
+// events are recorded) the peers passed over with the reason. Peers in
 // cooldown are only offered when no other source exists, and then only when
 // idle, so a slow sole source is probed rather than abandoned.
-func (co *Coordinator) sources(piece int, now time.Time, skip func(*peer) bool) ([]scheduler.Candidate, []*peer) {
+func (co *Coordinator) sources(piece int, now time.Time, skip func(*peer) bool) ([]scheduler.Candidate, []*peer, []skippedPeer) {
 	var cands []scheduler.Candidate
-	var ps []*peer
-	var cooling []*peer
+	var ps, cooling []*peer
+	var skipped []skippedPeer
+	note := co.cfg.Events != nil
 	for _, p := range co.peerList {
-		if !co.usable(p, piece, now) || (skip != nil && skip(p)) {
+		if p.closing || !p.gotBitfield || !p.has.Has(piece) || len(p.outstanding) >= co.cfg.MaxPerPeer ||
+			(skip != nil && skip(p)) {
+			continue
+		}
+		if now.Before(p.busyUntil) {
+			if note {
+				skipped = append(skipped, skippedPeer{p.id.Short(), "busy, backing off for " + dur(p.busyUntil.Sub(now))})
+			}
 			continue
 		}
 		if p.stats.InCooldown(now) {
@@ -840,8 +907,13 @@ func (co *Coordinator) sources(piece int, now time.Time, skip func(*peer) bool) 
 				cands, ps = append(cands, co.candidate(p)), append(ps, p)
 			}
 		}
+	} else if note {
+		for _, p := range cooling {
+			skipped = append(skipped, skippedPeer{p.id.Short(),
+				fmt.Sprintf("cooldown for %s after repeated timeouts", dur(p.stats.CooldownUntil().Sub(now)))})
+		}
 	}
-	return cands, ps
+	return cands, ps, skipped
 }
 
 func (co *Coordinator) send(p *peer, piece int, now time.Time, cands []scheduler.Candidate, endgame bool) bool {
@@ -880,11 +952,16 @@ func (co *Coordinator) schedule(now time.Time) {
 		return
 	}
 	budget -= co.cfg.Picker.Pick(co, budget, func(piece int) bool {
-		cands, ps := co.sources(piece, now, nil)
+		cands, ps, skipped := co.sources(piece, now, nil)
 		if len(cands) == 0 {
 			return false
 		}
-		return co.send(ps[co.cfg.Selector.Select(piece, co.m.PieceLen(piece), cands)], piece, now, cands, false)
+		chosen := co.cfg.Selector.Select(piece, co.m.PieceLen(piece), cands)
+		if !co.send(ps[chosen], piece, now, cands, false) {
+			return false
+		}
+		co.emitScheduled(piece, cands, chosen, skipped, nil, now)
+		return true
 	})
 	if budget > 0 && len(co.reqs) > 0 && co.allMissingInFlight() {
 		co.endgame(now, budget)
@@ -908,7 +985,10 @@ func (co *Coordinator) endgame(now time.Time, budget int) {
 	}
 	if !co.inEndgame {
 		co.inEndgame = true
-		co.log.Info("entering endgame", "remaining", co.m.NumPieces()-co.have.Count(), "in_flight", len(co.reqs))
+		remaining := co.m.NumPieces() - co.have.Count()
+		co.log.Info("entering endgame", "remaining", remaining, "in_flight", len(co.reqs))
+		co.emit(events.EndgameEntered, fmt.Sprintf("entering endgame: all %d remaining pieces are requested or verifying (%d requests in flight); overdue requests may now be duplicated",
+			remaining, len(co.reqs)), map[string]any{"remaining": remaining, "in_flight": len(co.reqs)})
 	}
 	oldest := make(map[int]*request)
 	for _, r := range co.reqs {
@@ -929,7 +1009,7 @@ func (co *Coordinator) endgame(now time.Time, budget int) {
 		if budget == 0 {
 			return
 		}
-		cands, ps := co.sources(piece, now, func(p *peer) bool {
+		cands, ps, skipped := co.sources(piece, now, func(p *peer) bool {
 			for _, r := range p.outstanding {
 				if r.piece == piece {
 					return true
@@ -940,7 +1020,8 @@ func (co *Coordinator) endgame(now time.Time, budget int) {
 		if len(cands) == 0 {
 			continue
 		}
-		p := ps[co.cfg.Selector.Select(piece, co.m.PieceLen(piece), cands)]
+		chosen := co.cfg.Selector.Select(piece, co.m.PieceLen(piece), cands)
+		p := ps[chosen]
 		if co.send(p, piece, now, cands, true) {
 			budget--
 			co.counters.EndgameRequests++
@@ -948,6 +1029,7 @@ func (co *Coordinator) endgame(now time.Time, budget int) {
 			co.log.Debug("endgame duplicate request", "piece", piece, "peer", p.id.Short(),
 				"waiting_on", o.peer.id.Short(), "age", now.Sub(o.sent).Round(time.Millisecond),
 				"expected", o.expected.Round(time.Millisecond))
+			co.emitScheduled(piece, cands, chosen, skipped, o, now)
 		}
 	}
 }

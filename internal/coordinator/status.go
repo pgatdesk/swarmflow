@@ -1,6 +1,11 @@
 package coordinator
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/pgatdesk/swarmflow/internal/events"
+)
 
 // Counters are cumulative event counts for a swarm.
 type Counters struct {
@@ -101,8 +106,11 @@ func (co *Coordinator) countUnavailable() int {
 	if n != co.unavailable && informed {
 		if n > 0 {
 			co.log.Warn("pieces have no available source; waiting for a peer that has them", "pieces", n)
+			co.emit(events.SourcesLost, fmt.Sprintf("%d needed pieces have no connected source; waiting and re-discovering", n),
+				map[string]any{"pieces": n})
 		} else {
 			co.log.Info("every needed piece has a source again")
+			co.emit(events.SourcesRestored, "every needed piece has a connected source again", nil)
 		}
 		co.unavailable = n
 	}

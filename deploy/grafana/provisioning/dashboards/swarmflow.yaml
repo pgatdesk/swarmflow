@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: swarmflow
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      # Set by scripts/monitoring.ps1 to <repo>/deploy/grafana/dashboards.
+      path: ${SWARMFLOW_DASHBOARDS}

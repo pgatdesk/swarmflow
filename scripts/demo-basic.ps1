@@ -21,6 +21,9 @@ $work = Join-Path $root "data/demo-basic"
 
 Write-Host "building binaries -> $bin"
 New-Item -ItemType Directory -Force $bin | Out-Null
+if (-not (Get-Command go -ErrorAction SilentlyContinue) -and (Test-Path "D:\DevTools\go\bin\go.exe")) {
+    $env:Path = "D:\DevTools\go\bin;$env:Path"   # default toolchain location from the setup guide
+}
 Push-Location $root
 & go build -o $bin ./cmd/...
 Pop-Location

@@ -1,0 +1,182 @@
+{
+  "uid": "swarmflow-overview",
+  "title": "SwarmFlow",
+  "description": "Live view of a SwarmFlow swarm. Metrics: Prometheus (scraped every 2 s from each peer). Topology, peer table and events: swarmflow-hub (polled every 1 s).",
+  "tags": ["swarmflow"],
+  "timezone": "browser",
+  "refresh": "2s",
+  "time": {"from": "now-5m", "to": "now"},
+  "schemaVersion": 39,
+  "editable": false,
+  "graphTooltip": 1,
+  "templating": {"list": []},
+  "annotations": {"list": []},
+  "panels": [
+    {
+      "type": "stat", "title": "Peers scraped", "gridPos": {"x": 0, "y": 0, "w": 4, "h": 4},
+      "description": "Peers Prometheus is scraping now (discovered via the hub).",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "count(up{job=\"swarmflow\"} == 1)", "instant": true}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "none", "graphMode": "none"}
+    },
+    {
+      "type": "stat", "title": "Download rate (all peers, 10 s)", "gridPos": {"x": 4, "y": 0, "w": 4, "h": 4},
+      "description": "Sum over peers of accepted payload bytes received per second, averaged over 10 s.",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "sum(rate(swarmflow_bytes_received_total[10s]))", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "Bps"}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "none", "graphMode": "area"}
+    },
+    {
+      "type": "stat", "title": "Upload rate (all peers, 10 s)", "gridPos": {"x": 8, "y": 0, "w": 4, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "sum(rate(swarmflow_bytes_sent_total[10s]))", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "Bps"}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "none", "graphMode": "area"}
+    },
+    {
+      "type": "stat", "title": "Request timeouts (1 min)", "gridPos": {"x": 12, "y": 0, "w": 4, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "sum(increase(swarmflow_request_timeouts_total[1m]))", "instant": true}],
+      "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "none"}
+    },
+    {
+      "type": "stat", "title": "Pieces with no source (max over peers)", "gridPos": {"x": 16, "y": 0, "w": 4, "h": 4},
+      "description": "Needed pieces no connected peer has. Downloads wait (and keep re-discovering) until a source appears.",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "max(swarmflow_unavailable_pieces)", "instant": true}],
+      "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "none"}
+    },
+    {
+      "type": "stat", "title": "Under-replicated pieces (max over replicators)", "gridPos": {"x": 20, "y": 0, "w": 4, "h": 4},
+      "description": "Held pieces with fewer verified copies elsewhere than the peer's -replicas target.",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "max(swarmflow_replication_under_replicated_pieces) or vector(0)", "instant": true}],
+      "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "none"}
+    },
+    {
+      "type": "table", "title": "Peers (from the hub)", "gridPos": {"x": 0, "y": 4, "w": 24, "h": 7},
+      "description": "Every peer the tracker knows. state: online, unreachable (listed but its API does not answer), gone (no longer announced). Rates are measured between hub polls.",
+      "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "swarmflow-hub"},
+      "targets": [{"refId": "A", "type": "json", "source": "url", "format": "table", "parser": "backend",
+        "url": "http://127.0.0.1:7100/api/peers", "url_options": {"method": "GET"}, "root_selector": "", "columns": []}],
+      "fieldConfig": {"defaults": {}, "overrides": [
+        {"matcher": {"id": "byName", "options": "progress_pct"}, "properties": [{"id": "unit", "value": "percent"}, {"id": "custom.cellOptions", "value": {"type": "gauge", "mode": "basic"}}, {"id": "max", "value": 100}]},
+        {"matcher": {"id": "byName", "options": "state"}, "properties": [{"id": "custom.cellOptions", "value": {"type": "color-text"}}, {"id": "mappings", "value": [{"type": "value", "options": {"online": {"color": "green"}, "unreachable": {"color": "red"}, "gone": {"color": "orange"}}}]}]}
+      ]},
+      "options": {"showHeader": true}
+    },
+    {
+      "type": "nodeGraph", "title": "Topology (observed connections only)", "gridPos": {"x": 0, "y": 11, "w": 12, "h": 11},
+      "description": "Nodes: peers (arc = completion). Edges: connections a monitored peer reports, with current transfer rate in both directions. No inferred links are drawn; 'not monitored' nodes are peers others report but the hub cannot reach.",
+      "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "swarmflow-hub"},
+      "targets": [
+        {"refId": "nodes", "type": "json", "source": "url", "format": "node-graph-nodes", "parser": "backend",
+          "url": "http://127.0.0.1:7100/api/topology/nodes", "url_options": {"method": "GET"}, "root_selector": "", "columns": []},
+        {"refId": "edges", "type": "json", "source": "url", "format": "node-graph-edges", "parser": "backend",
+          "url": "http://127.0.0.1:7100/api/topology/edges", "url_options": {"method": "GET"}, "root_selector": "", "columns": []}
+      ]
+    },
+    {
+      "type": "bargauge", "title": "Download progress", "gridPos": {"x": 12, "y": 11, "w": 12, "h": 11},
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "100 * swarmflow_pieces_have / swarmflow_pieces_total", "legendFormat": "{{peer}}", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}},
+      "options": {"orientation": "horizontal", "displayMode": "gradient", "showUnfilled": true, "reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "type": "timeseries", "title": "Download rate per peer (rate over 10 s)", "gridPos": {"x": 0, "y": 22, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "rate(swarmflow_bytes_received_total[10s])", "legendFormat": "{{peer}}"}],
+      "fieldConfig": {"defaults": {"unit": "Bps", "custom": {"fillOpacity": 10}}}
+    },
+    {
+      "type": "timeseries", "title": "Measured delivery rate per source (EWMA)", "gridPos": {"x": 12, "y": 22, "w": 12, "h": 8},
+      "description": "Each downloader's smoothed estimate of what each source delivers to it: the throughput input of peer selection. Application goodput, not link capacity.",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "swarmflow_peer_throughput_bytes_per_second_ewma", "legendFormat": "{{peer}} ← {{remote}}"}],
+      "fieldConfig": {"defaults": {"unit": "Bps"}}
+    },
+    {
+      "type": "timeseries", "title": "Application RTT per connection (EWMA)", "gridPos": {"x": 0, "y": 30, "w": 8, "h": 8},
+      "description": "PING/PONG on the data connection; includes queueing behind data in flight. Timeouts never produce samples.",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "swarmflow_peer_rtt_seconds_ewma", "legendFormat": "{{peer}} ↔ {{remote}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "type": "timeseries", "title": "Request latency p50 / p95 (histogram, 30 s)", "gridPos": {"x": 8, "y": 30, "w": 8, "h": 8},
+      "description": "Time from REQUEST sent to PIECE received, successful requests only, across all of a peer's sources.",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.5, sum by (le, peer) (rate(swarmflow_request_duration_seconds_bucket{outcome=\"ok\"}[30s])))", "legendFormat": "p50 {{peer}}"},
+        {"refId": "B", "expr": "histogram_quantile(0.95, sum by (le, peer) (rate(swarmflow_request_duration_seconds_bucket{outcome=\"ok\"}[30s])))", "legendFormat": "p95 {{peer}}"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "type": "timeseries", "title": "Request outcomes (per second, 10 s)", "gridPos": {"x": 16, "y": 30, "w": 8, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [{"refId": "A", "expr": "sum by (outcome) (rate(swarmflow_request_duration_seconds_count[10s]))", "legendFormat": "{{outcome}}"}],
+      "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"stacking": {"mode": "normal"}, "fillOpacity": 30}}}
+    },
+    {
+      "type": "timeseries", "title": "Requests in flight and upload queues (instantaneous)", "gridPos": {"x": 0, "y": 38, "w": 12, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [
+        {"refId": "A", "expr": "swarmflow_outstanding_requests", "legendFormat": "in flight {{peer}}"},
+        {"refId": "B", "expr": "swarmflow_upload_queue", "legendFormat": "upload queue {{peer}}"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Connections and peer health", "gridPos": {"x": 12, "y": 38, "w": 12, "h": 7},
+      "description": "Connected peers, and remote peers currently in cooldown (deprioritised after repeated timeouts).",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [
+        {"refId": "A", "expr": "swarmflow_connections", "legendFormat": "connections {{peer}}"},
+        {"refId": "B", "expr": "sum by (peer) (swarmflow_peer_cooldown)", "legendFormat": "in cooldown {{peer}}"}
+      ],
+      "fieldConfig": {"defaults": {"decimals": 0}}
+    },
+    {
+      "type": "table", "title": "Scheduler decisions (why this piece, why this peer)", "gridPos": {"x": 0, "y": 45, "w": 24, "h": 9},
+      "description": "Generated by each downloader from the candidates and measurements its selector actually used.",
+      "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "swarmflow-hub"},
+      "targets": [{"refId": "A", "type": "json", "source": "url", "format": "table", "parser": "backend",
+        "url": "http://127.0.0.1:7100/api/events?limit=100&type=piece_scheduled,endgame_duplicate", "url_options": {"method": "GET"}, "root_selector": "",
+        "columns": [{"selector": "time", "text": "time", "type": "timestamp"}, {"selector": "peer", "text": "peer", "type": "string"},
+          {"selector": "type", "text": "type", "type": "string"}, {"selector": "message", "text": "decision", "type": "string"}]}],
+      "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "decision"}, "properties": [{"id": "custom.width", "value": 1200}]}]}
+    },
+    {
+      "type": "table", "title": "Failures, recovery and replication events", "gridPos": {"x": 0, "y": 54, "w": 24, "h": 9},
+      "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "swarmflow-hub"},
+      "targets": [{"refId": "A", "type": "json", "source": "url", "format": "table", "parser": "backend",
+        "url": "http://127.0.0.1:7100/api/events?limit=200&type=peer_connected,peer_disconnected,piece_rejected,request_timeout,peer_cooldown,peer_banned,endgame_entered,download_complete,sources_lost,sources_restored,under_replicated,replication_target_reached,proof_failed",
+        "url_options": {"method": "GET"}, "root_selector": "",
+        "columns": [{"selector": "time", "text": "time", "type": "timestamp"}, {"selector": "peer", "text": "peer", "type": "string"},
+          {"selector": "type", "text": "type", "type": "string"}, {"selector": "message", "text": "event", "type": "string"}]}],
+      "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "event"}, "properties": [{"id": "custom.width", "value": 1200}]}]}
+    },
+    {
+      "type": "timeseries", "title": "Replication: verified copies elsewhere", "gridPos": {"x": 0, "y": 63, "w": 12, "h": 7},
+      "description": "Only copies proven by a possession challenge count; claims alone do not.",
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [
+        {"refId": "A", "expr": "swarmflow_replication_min_verified_copies and swarmflow_replication_target_copies > 1", "legendFormat": "min {{peer}}"},
+        {"refId": "B", "expr": "swarmflow_replication_mean_verified_copies and swarmflow_replication_target_copies > 1", "legendFormat": "mean {{peer}}"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Replication: possession proofs (per second, 10 s)", "gridPos": {"x": 12, "y": 63, "w": 12, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "swarmflow-prom"},
+      "targets": [
+        {"refId": "A", "expr": "sum(rate(swarmflow_replication_proofs_ok_total[10s]))", "legendFormat": "verified"},
+        {"refId": "B", "expr": "sum(rate(swarmflow_replication_proofs_failed_total[10s]))", "legendFormat": "failed"}
+      ]
+    }
+  ]
+}

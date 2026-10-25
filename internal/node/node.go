@@ -301,6 +301,9 @@ func (n *Node) maybeDial(ctx context.Context, co *coordinator.Coordinator, addr 
 	if id != nil && (*id == n.id || co.Connected(*id)) {
 		return
 	}
+	if id == nil && co.ConnectedAddr(addr) {
+		return // e.g. a PEX address of a peer that already connected to us
+	}
 	n.mu.Lock()
 	if known, ok := n.addrPeer[addr]; n.dialing[addr] || n.selfAddr[addr] || (ok && co.Connected(known)) {
 		n.mu.Unlock()

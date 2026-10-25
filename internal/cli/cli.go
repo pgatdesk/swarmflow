@@ -11,18 +11,25 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/pgatdesk/swarmflow/internal/api"
 	"github.com/pgatdesk/swarmflow/internal/bitfield"
 	"github.com/pgatdesk/swarmflow/internal/coordinator"
 	"github.com/pgatdesk/swarmflow/internal/dataset"
+	"github.com/pgatdesk/swarmflow/internal/events"
 	"github.com/pgatdesk/swarmflow/internal/manifest"
+	"github.com/pgatdesk/swarmflow/internal/metrics"
+	"github.com/pgatdesk/swarmflow/internal/netx"
 	"github.com/pgatdesk/swarmflow/internal/node"
 	"github.com/pgatdesk/swarmflow/internal/protocol"
 	"github.com/pgatdesk/swarmflow/internal/scheduler"
@@ -164,6 +171,8 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	logLevel := fs.String("log-level", "info", "debug, info, warn, error")
 	logJSON := fs.Bool("log-json", false, "structured JSON logs")
 	statsOut := fs.String("stats-out", "", "write the final status as JSON to this file on exit")
+	apiListen := fs.String("api-listen", "127.0.0.1:0", "monitoring API address (/metrics, /api/status, /api/events); empty disables")
+	maxUp := fs.String("max-upload-rate", "0", "cap total upload payload per second, e.g. 2MiB (0: unlimited)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -230,10 +239,23 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("-replica-budget: %w", err)
 	}
+	var apiLn net.Listener
+	if *apiListen != "" {
+		if apiLn, err = netx.Listen(*apiListen); err != nil {
+			return fmt.Errorf("-api-listen: %w", err)
+		}
+		defer apiLn.Close()
+		if ap, err := netip.ParseAddrPort(apiLn.Addr().String()); err == nil {
+			ncfg.APIPort = ap.Port() // announced to the tracker so the monitoring hub can find us
+		}
+	}
 	n, err := node.New(ncfg, log)
 	if err != nil {
 		return err
 	}
+	var coRef atomic.Pointer[coordinator.Coordinator]
+	ring := events.NewRing(10000)
+	reg, obs := metrics.NewRegistry(n.ID().Short(), m.ID().Short(), coRef.Load)
 
 	ccfg := coordinator.DefaultConfig()
 	ccfg.MaxOutstanding, ccfg.MaxPerPeer, ccfg.UploadSlots = *maxOut, *maxPerPeer, *uploadSlots
@@ -261,7 +283,14 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 		}
 		a.Explore, a.ExploreNewOnly = *explore, *exploreNew
 	}
+	ccfg.Events, ccfg.Observer = ring, obs
+	upRate, err := dataset.ParseSize(*maxUp)
+	if err != nil {
+		return fmt.Errorf("-max-upload-rate: %w", err)
+	}
+	ccfg.MaxUploadRate = float64(upRate)
 	co := coordinator.New(m, st, have, n.ID(), ccfg, n.Logger())
+	coRef.Store(co)
 	n.AddSwarm(co)
 	if *tracker == "" && len(peers) == 0 {
 		log.Warn("no -tracker and no -peer given; waiting for inbound connections only")
@@ -272,6 +301,11 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	var wg sync.WaitGroup
 	wg.Go(func() { co.Run(runCtx) })
 	wg.Go(func() { n.Run(runCtx) })
+	if apiLn != nil {
+		srv := &api.Server{Peer: n.ID().Short(), Role: mode, Coord: coRef.Load, Events: ring, Reg: reg, Log: log}
+		wg.Go(func() { srv.Serve(runCtx, apiLn) })
+		log.Info("monitoring API listening", "addr", apiLn.Addr().String())
+	}
 	if *progress > 0 {
 		wg.Go(func() { reportProgress(runCtx, co, *progress, log) })
 	}
