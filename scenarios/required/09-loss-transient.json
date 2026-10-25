@@ -1,0 +1,87 @@
+{
+    "name":  "09-loss-transient",
+    "description":  "Required scenario 9: packet loss (1-2%) and jitter on every seeder link, and transient connection failures: s1 loses its link for 2 s at 4 s and again at 10 s.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "30mbit",
+                                   "delay":  "15ms",
+                                   "jitter":  "5ms",
+                                   "loss":  "1"
+                               }
+                  },
+                  {
+                      "name":  "s2",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "30mbit",
+                                   "delay":  "25ms",
+                                   "jitter":  "10ms",
+                                   "loss":  "2"
+                               }
+                  },
+                  {
+                      "name":  "s3",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "40ms",
+                                   "loss":  "1"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "default"
+                     }
+                 ],
+    "events":  [
+                   {
+                       "peer":  "s1",
+                       "action":  "link-down",
+                       "at":  "4s"
+                   },
+                   {
+                       "peer":  "s1",
+                       "action":  "link-up",
+                       "at":  "6s"
+                   },
+                   {
+                       "peer":  "s1",
+                       "action":  "link-down",
+                       "at":  "10s"
+                   },
+                   {
+                       "peer":  "s1",
+                       "action":  "link-up",
+                       "at":  "12s"
+                   }
+               ]
+}

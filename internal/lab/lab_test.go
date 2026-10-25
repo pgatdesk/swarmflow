@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pgatdesk/swarmflow/internal/events"
 )
 
 func TestRateBits(t *testing.T) {
@@ -92,6 +94,75 @@ func TestLoadScenarioValidation(t *testing.T) {
 		if _, err := LoadScenario(writeScenario(t, body)); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
+	}
+}
+
+func TestObserveDetectionAndReReplication(t *testing.T) {
+	t0 := time.Unix(1000, 0)
+	at := func(ms int) time.Time { return t0.Add(time.Duration(ms) * time.Millisecond) }
+	applied := []AppliedEvent{{Peer: "r1", Action: "kill", At: at(0)}}
+	all := map[string][]events.Event{
+		"d1": {
+			{Time: at(-500), Type: events.PeerDisconnected, Fields: map[string]any{"remote": "aaaa"}}, // before the kill
+			{Time: at(40), Type: events.PeerDisconnected, Fields: map[string]any{"remote": "rrrr"}},
+		},
+		"s1": {
+			{Time: at(-100), Type: events.ReplicationTarget},
+			{Time: at(60), Type: events.RequestTimeout, Fields: map[string]any{"remote": "rrrr"}},
+			{Time: at(100), Type: events.UnderReplicated},
+			{Time: at(900), Type: events.ReplicationTarget},
+		},
+	}
+	got := observe(applied, all, map[string]string{"rrrr": "r1", "aaaa": "s9"})
+	want := []Observation{
+		{Kind: "detect_failure", Peer: "d1", Target: "r1", Seconds: 0.04},
+		{Kind: "detect_failure", Peer: "s1", Target: "r1", Seconds: 0.06},
+		{Kind: "re_replicate", Peer: "s1", Target: "r1", Seconds: 0.9},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("observations %+v", got)
+	}
+	for i := range want {
+		if got[i].Kind != want[i].Kind || got[i].Peer != want[i].Peer || math.Abs(got[i].Seconds-want[i].Seconds) > 1e-9 {
+			t.Errorf("observation %d: got %+v, want %+v", i, got[i], want[i])
+		}
+	}
+}
+
+// TestRepositoryScenariosLoad validates every scenario file shipped in the repo.
+func TestRepositoryScenariosLoad(t *testing.T) {
+	var files []string
+	filepath.WalkDir("../../scenarios", func(path string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && strings.HasSuffix(path, ".json") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if len(files) < 12 {
+		t.Fatalf("found only %d scenario files", len(files))
+	}
+	for _, f := range files {
+		sc, err := LoadScenario(f)
+		if err != nil {
+			t.Errorf("%s: %v", f, err)
+			continue
+		}
+		for _, p := range sc.Peers {
+			if strings.HasPrefix(p.Has, "corrupt:") && p.Role != "seed" {
+				t.Errorf("%s: corrupt data only makes sense for seeds", f)
+			}
+		}
+	}
+	t.Logf("%d scenario files load", len(files))
+}
+
+func TestVariantArgsByRole(t *testing.T) {
+	v := Variant{Args: []string{"-a"}, RoleArgs: map[string][]string{"*": {"-all"}, "seed": {"-s"}}}
+	if got := strings.Join(v.argsFor("get"), " "); got != "-a -all" {
+		t.Errorf("get: %q", got)
+	}
+	if got := strings.Join(v.argsFor("seed"), " "); got != "-all -s" {
+		t.Errorf("seed: %q", got)
 	}
 }
 

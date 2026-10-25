@@ -1,0 +1,75 @@
+{
+    "name":  "10-replication-loss",
+    "description":  "Required scenario 10: s1 keeps 3 verified copies (-replicas 3) on replica holders r1-r3. r1 is killed at 12 s (copies lost, must be re-created on r2/r3). The original seeder is killed at 17 s and a downloader joins at 18 s, so the download can only complete from the replicas.",
+    "file_size":  "32MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "80mbit",
+                                   "delay":  "10ms"
+                               },
+                      "args":  [
+                                   "-replicas",
+                                   "3"
+                               ]
+                  },
+                  {
+                      "name":  "r1",
+                      "role":  "replica",
+                      "link":  {
+                                   "rate":  "100mbit",
+                                   "delay":  "10ms"
+                               }
+                  },
+                  {
+                      "name":  "r2",
+                      "role":  "replica",
+                      "link":  {
+                                   "rate":  "100mbit",
+                                   "delay":  "15ms"
+                               }
+                  },
+                  {
+                      "name":  "r3",
+                      "role":  "replica",
+                      "link":  {
+                                   "rate":  "100mbit",
+                                   "delay":  "20ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "18s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "default"
+                     }
+                 ],
+    "events":  [
+                   {
+                       "peer":  "r1",
+                       "action":  "kill",
+                       "at":  "12s"
+                   },
+                   {
+                       "peer":  "s1",
+                       "action":  "kill",
+                       "at":  "17s"
+                   }
+               ]
+}

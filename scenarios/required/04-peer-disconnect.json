@@ -1,0 +1,67 @@
+{
+    "name":  "04-peer-disconnect",
+    "description":  "Required scenario 4: the fastest of three seeders (40/20/10 Mbit/s) is killed (SIGKILL) 5 s in; its outstanding requests must be reassigned.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "10ms"
+                               }
+                  },
+                  {
+                      "name":  "s2",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "20ms"
+                               }
+                  },
+                  {
+                      "name":  "s3",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "10mbit",
+                                   "delay":  "30ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "default"
+                     }
+                 ],
+    "events":  [
+                   {
+                       "peer":  "s1",
+                       "action":  "kill",
+                       "at":  "5s"
+                   }
+               ]
+}

@@ -83,16 +83,21 @@ type PeerSpec struct {
 	Role string `json:"role"`
 	Link Link   `json:"link"`
 	// Has selects which pieces a seed's file contains: "all" (default), "even",
-	// "odd", or "first:N%" / "last:N%".
+	// "odd", or "first:N%" / "last:N%"; or "corrupt:N%" for a complete file with
+	// N% of its pieces damaged, served without startup verification.
 	Has     string   `json:"has,omitempty"`
 	StartAt Duration `json:"start_at,omitzero"`
-	Args    []string `json:"args,omitempty"`
+	// Manual peers are started only by "start" events.
+	Manual bool     `json:"manual,omitempty"`
+	Args   []string `json:"args,omitempty"`
 }
 
 type Event struct {
 	At   Duration `json:"at"`
 	Peer string   `json:"peer"`
-	// Action is kill (SIGKILL), stop (SIGINT), link-down, link-up or set-link.
+	// Action is kill (SIGKILL), stop (SIGINT), start (start again, or for the
+	// first time if manual; a restarted downloader resumes from its state DB),
+	// link-down, link-up or set-link.
 	Action string `json:"action"`
 	Link   *Link  `json:"link,omitempty"`
 }
@@ -100,6 +105,18 @@ type Event struct {
 type Variant struct {
 	Name string   `json:"name"`
 	Args []string `json:"args"` // added to every downloader's command line
+	// RoleArgs adds arguments to peers by role ("seed", "get", "replica", or "*" for all).
+	RoleArgs map[string][]string `json:"role_args,omitempty"`
+}
+
+// argsFor returns the variant's extra arguments for a peer role.
+func (v Variant) argsFor(role string) []string {
+	var out []string
+	if role == "get" {
+		out = append(out, v.Args...)
+	}
+	out = append(out, v.RoleArgs["*"]...)
+	return append(out, v.RoleArgs[role]...)
 }
 
 type Scenario struct {
@@ -174,7 +191,7 @@ func (sc *Scenario) validate() error {
 			return fmt.Errorf("event for unknown peer %q", e.Peer)
 		}
 		switch e.Action {
-		case "kill", "stop", "link-down", "link-up":
+		case "kill", "stop", "start", "link-down", "link-up":
 		case "set-link":
 			if e.Link == nil {
 				return fmt.Errorf("set-link event needs link")

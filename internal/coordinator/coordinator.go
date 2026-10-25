@@ -74,6 +74,8 @@ type Config struct {
 	Observer Observer
 	// MaxUploadRate caps total upload payload in bytes/s (0 = unlimited).
 	MaxUploadRate float64
+	// Resume, if set, is reported in Status (what was recovered at startup).
+	Resume *ResumeInfo
 }
 
 // Journal durably records download progress. PiecePersisted is called from a
@@ -214,6 +216,7 @@ type Coordinator struct {
 	contribOrder []protocol.PeerID
 	started      time.Time
 	firstPeerAt  time.Time
+	firstPiece   time.Time
 	finished     time.Time
 	lastStatus   time.Time
 	counters     Counters
@@ -750,6 +753,9 @@ func (co *Coordinator) onVerified(r verify.Result, now time.Time) {
 	}
 	co.state[i] = stPersisted
 	co.have.Set(i)
+	if co.firstPiece.IsZero() {
+		co.firstPiece = now
+	}
 	if co.wanted.Has(i) {
 		co.wantedOpen--
 		co.repl.counters.ReplicasStored++

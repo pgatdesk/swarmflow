@@ -1,0 +1,113 @@
+{
+    "name":  "02-flash-crowd",
+    "description":  "Required scenario 2: one seeder (40 Mbit/s) and eight downloaders (20 Mbit/s, 5-40 ms) joining over 6 s. Downloaders trade pieces with each other; compares piece pickers.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "10ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1000ms"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "10ms"
+                               },
+                      "start_at":  "1750ms"
+                  },
+                  {
+                      "name":  "d3",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "15ms"
+                               },
+                      "start_at":  "2500ms"
+                  },
+                  {
+                      "name":  "d4",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "20ms"
+                               },
+                      "start_at":  "3250ms"
+                  },
+                  {
+                      "name":  "d5",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "25ms"
+                               },
+                      "start_at":  "4000ms"
+                  },
+                  {
+                      "name":  "d6",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "30ms"
+                               },
+                      "start_at":  "4750ms"
+                  },
+                  {
+                      "name":  "d7",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "35ms"
+                               },
+                      "start_at":  "5500ms"
+                  },
+                  {
+                      "name":  "d8",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "40ms"
+                               },
+                      "start_at":  "6250ms"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+                                      "-picker",
+                                      "rarest"
+                                  ],
+                         "name":  "rarest"
+                     },
+                     {
+                         "args":  [
+                                      "-picker",
+                                      "random"
+                                  ],
+                         "name":  "random"
+                     },
+                     {
+                         "args":  [
+                                      "-picker",
+                                      "sequential"
+                                  ],
+                         "name":  "sequential"
+                     }
+                 ]
+}

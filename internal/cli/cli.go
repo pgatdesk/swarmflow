@@ -171,6 +171,8 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	logLevel := fs.String("log-level", "info", "debug, info, warn, error")
 	logJSON := fs.Bool("log-json", false, "structured JSON logs")
 	statsOut := fs.String("stats-out", "", "write the final status as JSON to this file on exit")
+	eventsOut := fs.String("events-out", "", "write the event log as JSON to this file on exit")
+	noVerify := fs.Bool("no-verify", false, "seed: skip the startup hash check and serve the file as complete (receivers still verify every piece)")
 	apiListen := fs.String("api-listen", "127.0.0.1:0", "monitoring API address (/metrics, /api/status, /api/events); empty disables")
 	maxUp := fs.String("max-upload-rate", "0", "cap total upload payload per second, e.g. 2MiB (0: unlimited)")
 	if err := fs.Parse(args); err != nil {
@@ -200,10 +202,11 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 		have    bitfield.Bitfield
 		journal coordinator.Journal
 		hints   []string
+		resume  *coordinator.ResumeInfo
 	)
 	switch mode {
 	case "seed":
-		if st, have, err = openSeed(ctx, m, *file, log); err != nil {
+		if st, have, err = openSeed(ctx, m, *file, *noVerify, log); err != nil {
 			return err
 		}
 	case "get", "replica":
@@ -218,7 +221,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 			return err
 		}
 		defer db.Close()
-		if st, have, err = OpenDownload(ctx, db, m, *out, *resumeVerify == "full", log); err != nil {
+		if st, have, resume, err = OpenDownload(ctx, db, m, *out, *resumeVerify == "full", log); err != nil {
 			return err
 		}
 		journal = dbJournal{db: db, m: m}
@@ -283,7 +286,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 		}
 		a.Explore, a.ExploreNewOnly = *explore, *exploreNew
 	}
-	ccfg.Events, ccfg.Observer = ring, obs
+	ccfg.Events, ccfg.Observer, ccfg.Resume = ring, obs, resume
 	upRate, err := dataset.ParseSize(*maxUp)
 	if err != nil {
 		return fmt.Errorf("-max-upload-rate: %w", err)
@@ -321,8 +324,14 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	cancel()
 	wg.Wait()
 	if *statsOut != "" {
-		if err := writeStats(*statsOut, co.Status()); err != nil {
+		if err := writeJSONFile(*statsOut, co.Status()); err != nil {
 			log.Error("writing -stats-out failed", "err", err)
+		}
+	}
+	if *eventsOut != "" {
+		evs, _ := ring.Since(0, 0)
+		if err := writeJSONFile(*eventsOut, evs); err != nil {
+			log.Error("writing -events-out failed", "err", err)
 		}
 	}
 
@@ -337,9 +346,9 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	}
 }
 
-// writeStats writes s as JSON via a temporary file, so readers never see a partial file.
-func writeStats(path string, s *coordinator.Status) error {
-	b, err := json.MarshalIndent(s, "", "  ")
+// writeJSONFile writes v as JSON via a temporary file, so readers never see a partial file.
+func writeJSONFile(path string, v any) error {
+	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -367,13 +376,23 @@ const hintWindow = 24 * time.Hour
 
 func verifyWorkers() int { return max(runtime.NumCPU()/2, 1) }
 
-func openSeed(ctx context.Context, m *manifest.Manifest, file string, log *slog.Logger) (*store.Store, bitfield.Bitfield, error) {
+func openSeed(ctx context.Context, m *manifest.Manifest, file string, noVerify bool, log *slog.Logger) (*store.Store, bitfield.Bitfield, error) {
 	if file == "" {
 		return nil, bitfield.Bitfield{}, errors.New("-file is required for seed")
 	}
 	st, err := store.OpenComplete(file, m)
 	if err != nil {
 		return nil, bitfield.Bitfield{}, err
+	}
+	if noVerify {
+		// The file is served as complete without hashing it. Receivers verify
+		// every piece anyway; this only moves the cost of a bad file to them.
+		have := bitfield.New(m.NumPieces())
+		for i := range m.NumPieces() {
+			have.Set(i)
+		}
+		log.Warn("serving file without startup verification (-no-verify)", "path", file)
+		return st, have, nil
 	}
 	start := time.Now()
 	have, err := st.Recheck(ctx, verifyWorkers())
@@ -398,13 +417,13 @@ func openSeed(ctx context.Context, m *manifest.Manifest, file string, log *slog.
 //     crash may have interrupted its write.
 //   - A .part file with no database record (for example from a version without
 //     a state database) is fully re-hashed and adopted.
-func OpenDownload(ctx context.Context, db *statedb.DB, m *manifest.Manifest, out string, verifyResumed bool, log *slog.Logger) (*store.Store, bitfield.Bitfield, error) {
+func OpenDownload(ctx context.Context, db *statedb.DB, m *manifest.Manifest, out string, verifyResumed bool, log *slog.Logger) (*store.Store, bitfield.Bitfield, *coordinator.ResumeInfo, error) {
 	id := m.ID()
 	none := bitfield.Bitfield{}
 	if fi, err := os.Stat(out); err == nil && fi.Size() == m.Size() {
 		st, err := store.OpenComplete(out, m)
 		if err != nil {
-			return nil, none, err
+			return nil, none, nil, err
 		}
 		start := time.Now()
 		have, err := st.Recheck(ctx, verifyWorkers())
@@ -413,25 +432,25 @@ func OpenDownload(ctx context.Context, db *statedb.DB, m *manifest.Manifest, out
 			if err == nil {
 				err = fmt.Errorf("%d/%d pieces match the manifest; move it away to download again", have.Count(), m.NumPieces())
 			}
-			return nil, none, fmt.Errorf("existing file %s: %w", out, err)
+			return nil, none, nil, fmt.Errorf("existing file %s: %w", out, err)
 		}
 		log.Info("verified existing download; seeding", "path", out, "took", time.Since(start).Round(time.Millisecond))
-		return st, have, nil
+		return st, have, nil, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-		return nil, none, err
+		return nil, none, nil, err
 	}
 	rec, found, err := db.Swarm(id)
 	if err != nil {
-		return nil, none, err
+		return nil, none, nil, err
 	}
 	st, existed, err := store.Create(out+".part", out, m)
 	if err != nil {
-		return nil, none, err
+		return nil, none, nil, err
 	}
-	fail := func(err error) (*store.Store, bitfield.Bitfield, error) {
+	fail := func(err error) (*store.Store, bitfield.Bitfield, *coordinator.ResumeInfo, error) {
 		st.Close()
-		return nil, none, err
+		return nil, none, nil, err
 	}
 	if err := db.UpsertSwarm(statedb.Swarm{ID: id, Name: m.Name(), Size: m.Size(), PieceSize: m.PieceSize(),
 		Pieces: m.NumPieces(), Manifest: m.Canonical(), PartPath: out + ".part", FinalPath: out,
@@ -449,7 +468,7 @@ func OpenDownload(ctx context.Context, db *statedb.DB, m *manifest.Manifest, out
 			}
 		}
 		log.Info("starting new download", "path", out, "pieces", m.NumPieces())
-		return st, have, nil
+		return st, have, nil, nil
 	case !found:
 		if have, err = st.Recheck(ctx, verifyWorkers()); err != nil {
 			return fail(err)
@@ -463,7 +482,7 @@ func OpenDownload(ctx context.Context, db *statedb.DB, m *manifest.Manifest, out
 		}
 		log.Info("adopted existing partial file", "path", out+".part", "valid_pieces", have.Count(),
 			"took", time.Since(start).Round(time.Millisecond))
-		return st, have, nil
+		return st, have, nil, nil
 	}
 
 	recs, err := db.Persisted(id)
@@ -502,7 +521,7 @@ func OpenDownload(ctx context.Context, db *statedb.DB, m *manifest.Manifest, out
 	log.Info("resumed download", "path", out+".part", "resumed_pieces", have.Count(), "pieces", m.NumPieces(),
 		"invalid_on_resume", len(bad), "verify", map[bool]string{true: "full", false: "trust"}[verifyResumed],
 		"resume_overhead_ms", time.Since(start).Milliseconds(), "previously_created", rec.Created.Format(time.RFC3339))
-	return st, have, nil
+	return st, have, &coordinator.ResumeInfo{ResumedPieces: have.Count(), InvalidOnResume: len(bad), OverheadMs: time.Since(start).Milliseconds()}, nil
 }
 
 func reportProgress(ctx context.Context, co *coordinator.Coordinator, every time.Duration, log *slog.Logger) {

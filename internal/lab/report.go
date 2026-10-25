@@ -51,6 +51,10 @@ type VariantSummary struct {
 	Fairness       stat // Jain index of capacity-normalised source load
 	CPU, RSS       stat
 	Shares         map[string]float64 // mean share of useful bytes per source
+	// Per-trial totals over downloaders.
+	Rejected, Banned, Reassigned, Endgame stat
+	// DownloaderFairness is the Jain index of downloader throughputs (1 = equal).
+	DownloaderFairness stat
 }
 
 // capacityShares returns each initial source's (seed or replica) share of their
@@ -78,7 +82,7 @@ func (r *ScenarioResult) Summaries() []VariantSummary {
 	var out []VariantSummary
 	for _, v := range r.Scenario.Variants {
 		vs := VariantSummary{Name: v.Name, Shares: map[string]float64{}}
-		var mean, span, tput, trate, fair, cpu, rss []float64
+		var mean, span, tput, trate, fair, cpu, rss, rej, ban, reas, eg, dfair []float64
 		gets, done := 0, 0
 		shareTrials := 0
 		for _, t := range r.Trials {
@@ -91,7 +95,8 @@ func (r *ScenarioResult) Summaries() []VariantSummary {
 				continue
 			}
 			var sum, worst float64
-			var n, req, tos int
+			var n, req, tos, nrej, nban, nreas, neg int
+			var tps []float64
 			bySource := map[string]int64{}
 			var total int64
 			allDone := true
@@ -102,6 +107,7 @@ func (r *ScenarioResult) Summaries() []VariantSummary {
 				gets++
 				req += p.Requests
 				tos += p.Timeouts
+				nrej, nban, nreas, neg = nrej+p.Rejected, nban+p.Banned, nreas+p.Reassigned, neg+p.EndgameRequests
 				cpu, rss = append(cpu, p.CPUSeconds), append(rss, p.MaxRSSMiB)
 				if !p.Completed {
 					allDone = false
@@ -109,9 +115,14 @@ func (r *ScenarioResult) Summaries() []VariantSummary {
 				}
 				done++
 				n++
-				sum += p.CompletionS
-				worst = max(worst, p.CompletionS)
+				c := p.FromFirstStartS // includes downtime for restarted downloaders
+				if c == 0 {
+					c = p.CompletionS
+				}
+				sum += c
+				worst = max(worst, c)
 				tput = append(tput, p.ThroughputMiBps)
+				tps = append(tps, p.ThroughputMiBps)
 				for s, b := range p.Sources {
 					bySource[s] += b
 					total += b
@@ -125,6 +136,10 @@ func (r *ScenarioResult) Summaries() []VariantSummary {
 			}
 			if req > 0 {
 				trate = append(trate, float64(tos)/float64(req))
+			}
+			rej, ban, reas, eg = append(rej, float64(nrej)), append(ban, float64(nban)), append(reas, float64(nreas)), append(eg, float64(neg))
+			if j, ok := jain(tps); ok {
+				dfair = append(dfair, j)
 			}
 			if total > 0 {
 				shareTrials++
@@ -160,9 +175,46 @@ func (r *ScenarioResult) Summaries() []VariantSummary {
 		vs.MeanCompletion, vs.Makespan, vs.Throughput = summarize(mean), summarize(span), summarize(tput)
 		vs.TimeoutRate, vs.Fairness = summarize(trate), summarize(fair)
 		vs.CPU, vs.RSS = summarize(cpu), summarize(rss)
+		vs.Rejected, vs.Banned, vs.Reassigned, vs.Endgame = summarize(rej), summarize(ban), summarize(reas), summarize(eg)
+		vs.DownloaderFairness = summarize(dfair)
 		out = append(out, vs)
 	}
 	return out
+}
+
+// jain is Jain's fairness index (Σx)²/(n·Σx²); it needs at least two values.
+func jain(xs []float64) (float64, bool) {
+	if len(xs) < 2 {
+		return 0, false
+	}
+	var s, s2 float64
+	for _, x := range xs {
+		s, s2 = s+x, s2+x*x
+	}
+	if s2 == 0 {
+		return 0, false
+	}
+	return s * s / (float64(len(xs)) * s2), true
+}
+
+type obsKey struct{ variant, kind, peer, target string }
+
+// observations groups measured durations by variant, kind and peers.
+func (r *ScenarioResult) observations() (keys []obsKey, vals map[obsKey][]float64) {
+	vals = map[obsKey][]float64{}
+	for _, t := range r.Trials {
+		for _, o := range t.Observations {
+			k := obsKey{t.Variant, o.Kind, o.Peer, o.Target}
+			if _, ok := vals[k]; !ok {
+				keys = append(keys, k)
+			}
+			vals[k] = append(vals[k], o.Seconds)
+		}
+	}
+	slices.SortFunc(keys, func(a, b obsKey) int {
+		return strings.Compare(a.variant+a.kind+a.peer+a.target, b.variant+b.kind+b.peer+b.target)
+	})
+	return keys, vals
 }
 
 // isSource reports whether a peer can serve pieces from the start (seeds and replicas).
@@ -227,6 +279,24 @@ func (r *ScenarioResult) Markdown() string {
 			fmt.Fprintf(&b, " %.2f |", v.Shares[p.Name])
 		}
 		b.WriteString("\n")
+	}
+	b.WriteString("\nFailure handling, per trial (sums over downloaders):\n\n")
+	b.WriteString("| variant | rejected pieces | peers banned | requests reassigned | endgame duplicates | downloader fairness (Jain of throughput) |\n|---|---|---|---|---|---|\n")
+	for _, v := range sums {
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s |\n", v.Name, v.Rejected.fmt("%.0f"), v.Banned.fmt("%.0f"),
+			v.Reassigned.fmt("%.0f"), v.Endgame.fmt("%.0f"), v.DownloaderFairness.fmt("%.2f"))
+	}
+	if keys, vals := r.observations(); len(keys) > 0 {
+		b.WriteString("\nDurations measured from the peers' own event logs (seconds, median [p25–p75], n = trials observed):\n\n" +
+			"- detect_failure: from the event (kill, stop, link down) until the observer recorded a disconnect from, or a request timeout to, the target.\n" +
+			"- re_replicate: from the event until the replicator recorded \"replication target reached\" again.\n" +
+			"- resume_overhead: time a restarted downloader spent re-verifying persisted pieces before transferring.\n" +
+			"- first_piece_wait: time from a downloader's start to its first verified piece (shown when > 0.5 s).\n\n")
+		b.WriteString("| variant | measurement | observer | target | seconds | n |\n|---|---|---|---|---|---|\n")
+		for _, k := range keys {
+			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %d |\n", k.variant, k.kind, k.peer, k.target,
+				summarize(vals[k]).fmt("%.3f"), len(vals[k]))
+		}
 	}
 	return b.String()
 }

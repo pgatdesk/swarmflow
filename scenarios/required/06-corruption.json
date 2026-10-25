@@ -1,0 +1,53 @@
+{
+    "name":  "06-corruption",
+    "description":  "Required scenario 6: one fast seeder serves a file with 10% of pieces corrupted (served without startup verification); a slower seeder is honest. Corrupted pieces must be rejected and the liar banned.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s-bad",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "10ms"
+                               },
+                      "has":  "corrupt:10%"
+                  },
+                  {
+                      "name":  "s-good",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "20ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "default"
+                     }
+                 ]
+}

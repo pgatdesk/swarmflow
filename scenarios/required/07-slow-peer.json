@@ -1,0 +1,66 @@
+{
+    "name":  "07-slow-peer",
+    "description":  "Required scenario 7: a 1 Mbit/s, 150 ms seeder alongside 50 and 20 Mbit/s seeders. Compares endgame on and off.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s-fast",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "50mbit",
+                                   "delay":  "10ms"
+                               }
+                  },
+                  {
+                      "name":  "s-mid",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "20ms"
+                               }
+                  },
+                  {
+                      "name":  "s-slow",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "1mbit",
+                                   "delay":  "150ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "endgame"
+                     },
+                     {
+                         "args":  [
+                                      "-endgame=false"
+                                  ],
+                         "name":  "no-endgame"
+                     }
+                 ]
+}

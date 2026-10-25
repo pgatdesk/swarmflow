@@ -1,0 +1,63 @@
+{
+    "name":  "03-partial-seeders",
+    "description":  "Required scenario 3: three seeders with different subsets (even pieces, odd pieces, first half) and no full seed; two downloaders must assemble the file from all of them.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s-even",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "10ms"
+                               },
+                      "has":  "even"
+                  },
+                  {
+                      "name":  "s-odd",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "20ms"
+                               },
+                      "has":  "odd"
+                  },
+                  {
+                      "name":  "s-first",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "30ms"
+                               },
+                      "has":  "first:50%"
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "default"
+                     }
+                 ]
+}

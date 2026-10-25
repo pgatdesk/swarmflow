@@ -1,0 +1,43 @@
+{
+    "name":  "12-late-source",
+    "description":  "Required scenario 12: two downloaders start with no source available (the tracker returns no seeders); a seeder appears 8 s later. Downloaders must find it through re-discovery.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "10ms"
+                               },
+                      "start_at":  "8s"
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               }
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               }
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "default"
+                     }
+                 ]
+}

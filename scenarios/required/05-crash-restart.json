@@ -1,0 +1,64 @@
+{
+    "name":  "05-crash-restart",
+    "description":  "Required scenario 5: downloader d1 is killed (SIGKILL) 6 s in and restarted 3 s later; it resumes from its state database. d2 runs uninterrupted as a baseline.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "30mbit",
+                                   "delay":  "10ms"
+                               }
+                  },
+                  {
+                      "name":  "s2",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "30mbit",
+                                   "delay":  "20ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "default"
+                     }
+                 ],
+    "events":  [
+                   {
+                       "peer":  "d1",
+                       "action":  "kill",
+                       "at":  "6s"
+                   },
+                   {
+                       "peer":  "d1",
+                       "action":  "start",
+                       "at":  "9s"
+                   }
+               ]
+}

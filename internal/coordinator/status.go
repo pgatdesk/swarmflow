@@ -53,9 +53,20 @@ type Status struct {
 	StartedAt time.Time      `json:"started_at"`
 	// FirstPeerAt is when the first peer connected: time before it is spent
 	// waiting for sources, not transferring.
-	FirstPeerAt time.Time    `json:"first_peer_at,omitzero"`
-	FinishedAt  time.Time    `json:"finished_at,omitzero"`
-	Peers       []PeerStatus `json:"peers"`
+	FirstPeerAt time.Time `json:"first_peer_at,omitzero"`
+	// FirstPieceAt is when this run persisted its first piece (time to first data).
+	FirstPieceAt time.Time `json:"first_piece_at,omitzero"`
+	// Resume describes what this run recovered from durable state, if anything.
+	Resume     *ResumeInfo  `json:"resume,omitempty"`
+	FinishedAt time.Time    `json:"finished_at,omitzero"`
+	Peers      []PeerStatus `json:"peers"`
+}
+
+// ResumeInfo records what was recovered from durable state at startup.
+type ResumeInfo struct {
+	ResumedPieces   int   `json:"resumed_pieces"`
+	InvalidOnResume int   `json:"invalid_on_resume"`
+	OverheadMs      int64 `json:"overhead_ms"` // time spent re-verifying before the transfer could start
 }
 
 // SourceStatus is one peer's cumulative contribution to our download.
@@ -130,7 +141,8 @@ func (co *Coordinator) publishStatus(now time.Time) {
 		BytesDown:   co.counters.BytesDown, BytesUp: co.bytesUp.Load(), Rejected: co.counters.Rejected,
 		Complete: co.have.Complete(), Endgame: co.inEndgame && !co.have.Complete(),
 		Picker: co.cfg.Picker.Name(), Selector: co.cfg.Selector.Name(), Counters: co.counters,
-		StartedAt: co.started, FinishedAt: co.finished, FirstPeerAt: co.firstPeerAt,
+		StartedAt: co.started, FinishedAt: co.finished, FirstPeerAt: co.firstPeerAt, FirstPieceAt: co.firstPiece,
+		Resume: co.cfg.Resume,
 	}
 	for _, id := range co.contribOrder {
 		s.Sources = append(s.Sources, *co.contrib[id])

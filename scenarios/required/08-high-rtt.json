@@ -1,0 +1,100 @@
+{
+    "name":  "08-high-rtt",
+    "description":  "Required scenario 8: increased RTT and constrained bandwidth: four 40 Mbit/s seeders at 150 ms one-way, downloaders at 50 ms (RTT about 400 ms, above the 1 MiB that 4 requests of 256 KiB keep in flight). Compares per-peer request depth 4/8/16 with matching upload slots (decision 0006 follow-up).",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "150ms"
+                               }
+                  },
+                  {
+                      "name":  "s2",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "150ms"
+                               }
+                  },
+                  {
+                      "name":  "s3",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "150ms"
+                               }
+                  },
+                  {
+                      "name":  "s4",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "40mbit",
+                                   "delay":  "150ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "50ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "200mbit",
+                                   "delay":  "50ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "depth4",
+                         "role_args":  {
+                                           "*":  [
+                                                     "-upload-slots",
+                                                     "4"
+                                                 ]
+                                       }
+                     },
+                     {
+                         "args":  [
+                                      "-max-per-peer",
+                                      "8"
+                                  ],
+                         "name":  "depth8",
+                         "role_args":  {
+                                           "*":  [
+                                                     "-upload-slots",
+                                                     "8"
+                                                 ]
+                                       }
+                     },
+                     {
+                         "args":  [
+                                      "-max-per-peer",
+                                      "16"
+                                  ],
+                         "name":  "depth16",
+                         "role_args":  {
+                                           "*":  [
+                                                     "-upload-slots",
+                                                     "16"
+                                                 ]
+                                       }
+                     }
+                 ]
+}

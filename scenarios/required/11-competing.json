@@ -1,0 +1,106 @@
+{
+    "name":  "11-competing",
+    "description":  "Required scenario 11: six downloaders start together and compete for two 20 Mbit/s seeders. Compares the upload admission cap (decision 0003) on and off; reports fairness across downloaders.",
+    "file_size":  "64MiB",
+    "piece_size":  "256KiB",
+    "data_seed":  31,
+    "timeout":  "300s",
+    "peers":  [
+                  {
+                      "name":  "s1",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "10ms"
+                               }
+                  },
+                  {
+                      "name":  "s2",
+                      "role":  "seed",
+                      "link":  {
+                                   "rate":  "20mbit",
+                                   "delay":  "20ms"
+                               }
+                  },
+                  {
+                      "name":  "d1",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "50mbit",
+                                   "delay":  "5ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d2",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "50mbit",
+                                   "delay":  "10ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d3",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "50mbit",
+                                   "delay":  "15ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d4",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "50mbit",
+                                   "delay":  "20ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d5",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "50mbit",
+                                   "delay":  "25ms"
+                               },
+                      "start_at":  "1s"
+                  },
+                  {
+                      "name":  "d6",
+                      "role":  "get",
+                      "link":  {
+                                   "rate":  "50mbit",
+                                   "delay":  "30ms"
+                               },
+                      "start_at":  "1s"
+                  }
+              ],
+    "variants":  [
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "cap16",
+                         "role_args":  {
+                                           "*":  [
+                                                     "-upload-queue",
+                                                     "16"
+                                                 ]
+                                       }
+                     },
+                     {
+                         "args":  [
+
+                                  ],
+                         "name":  "no-cap",
+                         "role_args":  {
+                                           "*":  [
+                                                     "-upload-queue",
+                                                     "0"
+                                                 ]
+                                       }
+                     }
+                 ]
+}
