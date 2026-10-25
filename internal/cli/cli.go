@@ -23,6 +23,7 @@ import (
 	"github.com/pgatdesk/swarmflow/internal/dataset"
 	"github.com/pgatdesk/swarmflow/internal/manifest"
 	"github.com/pgatdesk/swarmflow/internal/node"
+	"github.com/pgatdesk/swarmflow/internal/protocol"
 	"github.com/pgatdesk/swarmflow/internal/scheduler"
 	"github.com/pgatdesk/swarmflow/internal/statedb"
 	"github.com/pgatdesk/swarmflow/internal/store"
@@ -150,6 +151,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	picker := fs.String("picker", "rarest", "piece picker: "+strings.Join(scheduler.Pickers, ", "))
 	selector := fs.String("selector", "adaptive", "peer selector: "+strings.Join(scheduler.Selectors, ", "))
 	endgame := fs.Bool("endgame", true, "issue duplicate requests for overdue pieces near completion")
+	pex := fs.Duration("pex-interval", 30*time.Second, "peer exchange interval (0 disables peer exchange)")
 	seed := fs.Uint64("seed", 0, "seed for randomized policies (0: derive from the random peer ID)")
 	exitOnComplete := fs.Bool("exit-on-complete", false, "get: exit once the download is complete")
 	progress := fs.Duration("progress", 2*time.Second, "progress report interval (0 disables)")
@@ -181,6 +183,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 		st      *store.Store
 		have    bitfield.Bitfield
 		journal coordinator.Journal
+		hints   []string
 	)
 	switch mode {
 	case "seed":
@@ -203,11 +206,17 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 			return err
 		}
 		journal = dbJournal{db: db, m: m}
+		if hints, err = db.RecentPeers(m.ID(), time.Now().Add(-hintWindow), 50); err != nil {
+			return err
+		}
+		if len(hints) > 0 {
+			log.Info("remembered peers available for re-discovery", "count", len(hints))
+		}
 	}
 	defer st.Close()
 
 	ncfg := node.DefaultConfig()
-	ncfg.ListenAddr, ncfg.TrackerURL, ncfg.StaticPeers = *listen, *tracker, peers
+	ncfg.ListenAddr, ncfg.TrackerURL, ncfg.StaticPeers, ncfg.HintPeers = *listen, *tracker, peers, hints
 	ncfg.AdvertiseIP, ncfg.AdvertisePort, ncfg.MaxPeers = *advIP, uint16(*advPort), *maxPeers
 	n, err := node.New(ncfg, log)
 	if err != nil {
@@ -216,7 +225,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 
 	ccfg := coordinator.DefaultConfig()
 	ccfg.MaxOutstanding, ccfg.MaxPerPeer, ccfg.UploadSlots = *maxOut, *maxPerPeer, *uploadSlots
-	ccfg.UploadQueueCap, ccfg.Journal = *uploadQueue, journal
+	ccfg.UploadQueueCap, ccfg.Journal, ccfg.PEXInterval = *uploadQueue, journal, *pex
 	ccfg.RequestTimeout, ccfg.MaxPeers, ccfg.Endgame.Enabled = *reqTimeout, *maxPeers, *endgame
 	if *seed == 0 {
 		// Distinct seeds per peer keep downloaders from breaking rarest-first
@@ -275,6 +284,12 @@ type dbJournal struct {
 
 func (j dbJournal) PiecePersisted(i int) error { return j.db.MarkPersisted(j.m.ID(), i, j.m.Hash(i)) }
 func (j dbJournal) Completed() error           { return j.db.SetStatus(j.m.ID(), statedb.StatusComplete) }
+func (j dbJournal) PeerSeen(addr string, id protocol.PeerID) error {
+	return j.db.RecordPeer(j.m.ID(), addr, id, time.Now())
+}
+
+// hintWindow is how far back remembered peers are used as restart hints.
+const hintWindow = 24 * time.Hour
 
 func verifyWorkers() int { return max(runtime.NumCPU()/2, 1) }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/pgatdesk/swarmflow/internal/discovery"
 	"github.com/pgatdesk/swarmflow/internal/faultnet"
 	"github.com/pgatdesk/swarmflow/internal/manifest"
+	"github.com/pgatdesk/swarmflow/internal/netx"
 	"github.com/pgatdesk/swarmflow/internal/protocol"
 	"github.com/pgatdesk/swarmflow/internal/scheduler"
 	"github.com/pgatdesk/swarmflow/internal/store"
@@ -124,6 +125,9 @@ func (f *fixture) start(name string, o peerOpts) *testPeer {
 	}
 	ccfg := coordinator.DefaultConfig()
 	ccfg.RequestTimeout = 2 * time.Second
+	// PEX makes peers dial each other directly, bypassing the impaired
+	// listeners these tests rely on; only the PEX test enables it.
+	ccfg.PEXInterval = 0
 	id := n.ID()
 	seed := uint64(id[0])<<8 | uint64(id[1])
 	ccfg.Picker = scheduler.NewRarestFirst(seed)
@@ -431,6 +435,46 @@ func TestHandshakeRejections(t *testing.T) {
 	if r := try(protocol.Handshake{Major: 1, Swarm: f.m.ID(), Peer: s.n.ID()}); r != protocol.ByeSelf {
 		t.Errorf("self: got %s", r)
 	}
+}
+
+func TestPEXDiscoversIndirectPeers(t *testing.T) {
+	f := newFixture(t, 256<<10)
+	pex := func(c *coordinator.Config) { c.PEXInterval = 30 * time.Second }
+	a := f.start("a", peerOpts{seedFile: f.writeSource("src.bin", nil), ccfg: pex})
+	b := f.start("b", peerOpts{peers: []string{a.addr()}, ccfg: pex})
+	waitFor(t, 5*time.Second, func() bool { return b.co.Connected(a.n.ID()) })
+	// c only knows b; it must learn a's address from b's PEX.
+	c := f.start("c", peerOpts{peers: []string{b.addr()}, ccfg: pex})
+	waitFor(t, 10*time.Second, func() bool { return c.co.Connected(a.n.ID()) })
+	f.waitComplete(20*time.Second, b, c)
+	f.checkOutput(c)
+}
+
+func TestTrackerUnavailableAtStart(t *testing.T) {
+	f := newFixture(t, 256<<10)
+	ln, err := netx.Listen("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	ln.Close() // nothing listens here yet
+	url := "http://" + addr
+	d := f.start("d", peerOpts{tracker: url})
+	f.start("seed", peerOpts{seedFile: f.writeSource("src.bin", nil), tracker: url})
+	time.Sleep(time.Second) // several failed announces with backoff
+	if d.co.PeerCount() != 0 {
+		t.Fatal("peers connected without a tracker")
+	}
+	ln, err = net.Listen("tcp", addr)
+	if err != nil {
+		t.Skipf("could not re-bind the reserved tracker port: %v", err)
+	}
+	srv := httptest.NewUnstartedServer(discovery.NewTracker(testLogger(t)).Handler())
+	srv.Listener = ln
+	srv.Start()
+	defer srv.Close()
+	f.waitComplete(20*time.Second, d)
+	f.checkOutput(d)
 }
 
 func TestDownloaderFindsSeederThatStartsLater(t *testing.T) {

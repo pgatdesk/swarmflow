@@ -10,6 +10,7 @@ import (
 	"context"
 	"log/slog"
 	"math/rand/v2"
+	"net/netip"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -57,6 +58,9 @@ type Config struct {
 	Stats             peerstats.Config
 	// Journal, if set, durably records progress (see Journal).
 	Journal Journal
+	// PEXInterval is how often connected peers' addresses are sent to each
+	// peer; 0 disables peer exchange (sending and acting on PEX).
+	PEXInterval time.Duration
 }
 
 // Journal durably records download progress. PiecePersisted is called from a
@@ -66,6 +70,9 @@ type Config struct {
 type Journal interface {
 	PiecePersisted(piece int) error
 	Completed() error
+	// PeerSeen records the listen address of a peer that completed a
+	// handshake, for re-discovery after a restart. It is called off the event loop.
+	PeerSeen(addr string, id protocol.PeerID) error
 }
 
 func DefaultConfig() Config {
@@ -86,6 +93,7 @@ func DefaultConfig() Config {
 		Selector:          scheduler.NewAdaptivePeer(1, scheduler.DefaultExplore),
 		Endgame:           scheduler.DefaultEndgame(),
 		Stats:             peerstats.DefaultConfig(),
+		PEXInterval:       30 * time.Second,
 	}
 }
 
@@ -132,6 +140,7 @@ type peer struct {
 	pingNonce          uint64
 	pingSent, lastPing time.Time
 	busyUntil          time.Time
+	pexSent, pexRecv   time.Time
 
 	piecesFrom, duplicates, unexpected int
 	bytesFrom                          int64
@@ -150,7 +159,9 @@ type Coordinator struct {
 	done     chan struct{}
 	complete chan struct{}
 
-	connected    sync.Map // protocol.PeerID → netip.AddrPort; read by the node for dialing decisions
+	connected sync.Map // protocol.PeerID → netip.AddrPort; read by the node for dialing decisions
+	// discovered receives peer addresses learned via PEX; set by the node before Run.
+	discovered   func([]netip.AddrPort)
 	peerCount    atomic.Int32
 	bytesUp      atomic.Int64
 	uploadQueued atomic.Int32
@@ -224,6 +235,10 @@ func (co *Coordinator) Complete() <-chan struct{}    { return co.complete }
 func (co *Coordinator) Done() <-chan struct{}        { return co.done }
 func (co *Coordinator) PeerCount() int               { return int(co.peerCount.Load()) }
 func (co *Coordinator) Status() *Status              { return co.status.Load() }
+
+// OnDiscovered registers f to receive addresses learned from peers (PEX). It
+// must be called before Run; f is called on the event loop and must not block.
+func (co *Coordinator) OnDiscovered(f func([]netip.AddrPort)) { co.discovered = f }
 
 func (co *Coordinator) Connected(id protocol.PeerID) bool {
 	_, ok := co.connected.Load(id)
@@ -348,7 +363,58 @@ func (co *Coordinator) onConn(ctx context.Context, c *conn.Conn) {
 	go p.up.run(upCtx)
 	c.Start(ctx, co.inbound)
 	c.SendControl(protocol.Bitfield{Bits: co.have.Bytes()})
+	co.sendPEX(p, time.Now())
 	co.log.Info("peer connected", "peer", id.Short(), "addr", c.RemoteAddr().String(), "outbound", c.Outbound())
+	if j := co.cfg.Journal; j != nil && c.ListenAddr().IsValid() && c.ListenAddr().Port() != 0 {
+		addr := c.ListenAddr().String()
+		go func() {
+			if err := j.PeerSeen(addr, id); err != nil {
+				co.log.Warn("recording peer failed", "err", err)
+			}
+		}()
+	}
+}
+
+// sendPEX sends p the listen addresses of up to MaxPEXPeers other connected
+// peers. Addresses are as observed by us, so peers behind NAT may be unreachable.
+func (co *Coordinator) sendPEX(p *peer, now time.Time) {
+	if co.cfg.PEXInterval <= 0 {
+		return
+	}
+	var addrs []netip.AddrPort
+	for _, q := range co.peerList {
+		if a := q.c.ListenAddr(); q != p && !q.closing && a.IsValid() && a.Port() != 0 {
+			addrs = append(addrs, a)
+		}
+	}
+	rand.Shuffle(len(addrs), func(i, j int) { addrs[i], addrs[j] = addrs[j], addrs[i] })
+	p.pexSent = now
+	if len(addrs) == 0 {
+		return
+	}
+	p.c.SendControl(protocol.PEX{Peers: addrs[:min(len(addrs), protocol.MaxPEXPeers)]})
+}
+
+// minPEXGap bounds how often a peer's PEX messages are acted on.
+const minPEXGap = 10 * time.Second
+
+func (co *Coordinator) onPEX(p *peer, m protocol.PEX, now time.Time) {
+	if co.cfg.PEXInterval <= 0 {
+		return
+	}
+	if !p.pexRecv.IsZero() && now.Sub(p.pexRecv) < minPEXGap {
+		return // ignore floods; a well-behaved peer sends one per PEXInterval
+	}
+	p.pexRecv = now
+	var fresh []netip.AddrPort
+	for _, a := range m.Peers {
+		if a.IsValid() && a.Port() != 0 && !a.Addr().IsUnspecified() && !a.Addr().IsMulticast() {
+			fresh = append(fresh, a)
+		}
+	}
+	if len(fresh) > 0 && co.discovered != nil {
+		co.discovered(fresh)
+	}
 }
 
 // preferNew decides between two connections to the same peer. Both ends keep
@@ -454,9 +520,11 @@ func (co *Coordinator) onMessage(p *peer, m protocol.Message, now time.Time) {
 			p.stats.OnRTT(now, now.Sub(p.pingSent))
 			p.pingNonce = 0
 		}
+	case protocol.PEX:
+		co.onPEX(p, m, now)
 	default:
-		// PEX, CHALLENGE, PROOF and replication messages are handled by later
-		// milestones; until then they are accepted and ignored.
+		// CHALLENGE, PROOF and replication messages are handled by a later
+		// milestone; until then they are accepted and ignored.
 		co.log.Debug("ignoring message", "peer", p.id.Short(), "type", m.Type().String())
 	}
 }
@@ -574,6 +642,12 @@ func (co *Coordinator) onVerified(r verify.Result, now time.Time) {
 		co.releasePiece(i)
 		return
 	}
+	if co.have.Has(i) {
+		// Each piece is submitted for verification at most once (onPiece drops
+		// copies while it is verifying), so this indicates a bookkeeping bug.
+		co.log.Error("piece persisted twice; ignoring the second result", "piece", i)
+		return
+	}
 	co.state[i] = stPersisted
 	co.have.Set(i)
 	// Endgame duplicates for this piece are no longer needed.
@@ -654,6 +728,9 @@ func (co *Coordinator) pingPeers(now time.Time) {
 			p.pingSent, p.lastPing = now, now
 			p.c.SendControl(protocol.Ping{Nonce: p.pingNonce})
 		}
+		if co.cfg.PEXInterval > 0 && now.Sub(p.pexSent) >= co.cfg.PEXInterval {
+			co.sendPEX(p, now)
+		}
 	}
 }
 
@@ -733,7 +810,9 @@ func (co *Coordinator) send(p *peer, piece int, now time.Time, cands []scheduler
 	co.reqs[id] = r
 	p.outstanding[id] = r
 	co.inflight[piece]++
-	co.state[piece] = stRequested
+	if co.state[piece] == stMissing {
+		co.state[piece] = stRequested // never downgrade a piece that is verifying or persisted
+	}
 	co.counters.Requests++
 	return true
 }
@@ -785,6 +864,9 @@ func (co *Coordinator) endgame(now time.Time, budget int) {
 	}
 	inflight := make([]scheduler.InFlight, 0, len(oldest))
 	for piece, r := range oldest {
+		if co.state[piece] != stRequested {
+			continue // a copy already arrived and is being verified; wait for its result
+		}
 		inflight = append(inflight, scheduler.InFlight{Piece: piece, Requests: co.inflight[piece],
 			Age: now.Sub(r.sent), Expected: r.expected})
 	}

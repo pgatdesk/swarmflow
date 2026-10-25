@@ -232,6 +232,55 @@ func TestCrashAndResume(t *testing.T) {
 	t.Logf("resumed %d pieces (overhead %v ms), re-downloaded %d bytes of %d", resumed, res["resume_overhead_ms"], down, size)
 }
 
+func TestRestartRediscoversRememberedPeers(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.bin")
+	dataset.WriteFile(src, 4<<20, 5)
+	m, _ := manifest.BuildFile(src, 64<<10)
+	mpath := filepath.Join(dir, "src.swarm")
+	m.Save(mpath)
+	seeder := startSeeder(t, m, src, 1<<20)
+	out := filepath.Join(dir, "dl", "payload.bin")
+	dbPath := filepath.Join(dir, "dl", "state.db")
+	common := []string{"get", "-manifest", mpath, "-out", out, "-state-db", dbPath, "-log-json", "-progress", "0", "-exit-on-complete"}
+
+	c1 := startChild(t, append(common, "-peer", seeder)...)
+	db, _ := statedb.Open(dbPath)
+	defer db.Close()
+	for end := time.Now().Add(20 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		if n, _ := db.CountPersisted(m.ID()); n >= 8 {
+			break
+		}
+		if time.Now().After(end) {
+			t.Fatal("no progress")
+		}
+	}
+	c1.cmd.Process.Kill()
+	c1.cmd.Wait()
+
+	// No tracker and no -peer: the only way back to the seeder is the remembered address.
+	c2 := startChild(t, common...)
+	errc := make(chan error, 1)
+	go func() { errc <- c2.cmd.Wait() }()
+	select {
+	case err := <-errc:
+		if err != nil {
+			t.Fatalf("restart failed: %v", err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("restart without peers did not complete")
+	}
+	<-c2.done
+	if c2.find("remembered peers available for re-discovery") == nil {
+		t.Fatal("restart did not load remembered peers")
+	}
+	got, _ := os.ReadFile(out)
+	want, _ := os.ReadFile(src)
+	if !bytes.Equal(got, want) {
+		t.Fatal("output differs from source")
+	}
+}
+
 func TestHelpAndBadFlags(t *testing.T) {
 	var out, errb strings.Builder
 	if code := Main([]string{"get", "-h"}, &out, &errb); code != 0 {

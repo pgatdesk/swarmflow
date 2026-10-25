@@ -31,10 +31,13 @@ type Config struct {
 	AdvertiseIP string
 	// AdvertisePort is sent in the handshake and to the tracker instead of the
 	// listener's port (for example when peers must reach us through a proxy).
-	AdvertisePort    uint16
-	APIPort          uint16
-	TrackerURL       string
-	StaticPeers      []string
+	AdvertisePort uint16
+	APIPort       uint16
+	TrackerURL    string
+	StaticPeers   []string
+	// HintPeers are addresses remembered from earlier runs; they are dialed
+	// only while a swarm has no connected peers.
+	HintPeers        []string
 	MaxPeers         int
 	DialTimeout      time.Duration
 	HandshakeTimeout time.Duration
@@ -73,6 +76,7 @@ type Node struct {
 
 	mu       sync.Mutex
 	swarms   map[protocol.SwarmID]*coordinator.Coordinator
+	pex      map[protocol.SwarmID]chan []netip.AddrPort
 	dialing  map[string]bool
 	addrPeer map[string]protocol.PeerID // learned from successful handshakes
 	selfAddr map[string]bool
@@ -104,6 +108,7 @@ func New(cfg Config, log *slog.Logger) (*Node, error) {
 		log:      log.With("self", id.Short()),
 		hsem:     make(chan struct{}, max(cfg.MaxHandshakes, 1)),
 		swarms:   make(map[protocol.SwarmID]*coordinator.Coordinator),
+		pex:      make(map[protocol.SwarmID]chan []netip.AddrPort),
 		dialing:  make(map[string]bool),
 		addrPeer: make(map[string]protocol.PeerID),
 		selfAddr: make(map[string]bool),
@@ -119,6 +124,14 @@ func (n *Node) AddSwarm(co *coordinator.Coordinator) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.swarms[co.ID()] = co
+	ch := make(chan []netip.AddrPort, 64)
+	n.pex[co.ID()] = ch
+	co.OnDiscovered(func(addrs []netip.AddrPort) {
+		select {
+		case ch <- addrs:
+		default: // discovery is behind; drop rather than block the coordinator
+		}
+	})
 }
 
 func (n *Node) swarm(id protocol.SwarmID) *coordinator.Coordinator {
@@ -132,8 +145,10 @@ func (n *Node) Run(ctx context.Context) error {
 	n.log.Info("listening", "addr", n.ln.Addr().String(), "advertised_port", n.port)
 	n.wg.Go(func() { n.acceptLoop(ctx) })
 	n.mu.Lock()
-	for _, co := range n.swarms {
+	for id, co := range n.swarms {
+		pex := n.pex[id]
 		n.wg.Go(func() { n.discoverLoop(ctx, co) })
+		n.wg.Go(func() { n.pexLoop(ctx, co, pex) })
 	}
 	n.mu.Unlock()
 	<-ctx.Done()
@@ -292,6 +307,20 @@ func (n *Node) maybeDial(ctx context.Context, co *coordinator.Coordinator, addr 
 	})
 }
 
+// pexLoop dials addresses learned from peers.
+func (n *Node) pexLoop(ctx context.Context, co *coordinator.Coordinator, ch <-chan []netip.AddrPort) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case addrs := <-ch:
+			for _, a := range addrs {
+				n.maybeDial(ctx, co, a.String(), nil)
+			}
+		}
+	}
+}
+
 func (n *Node) discoverLoop(ctx context.Context, co *coordinator.Coordinator) {
 	var client *discovery.Client
 	if n.cfg.TrackerURL != "" {
@@ -320,6 +349,11 @@ func (n *Node) discoverLoop(ctx context.Context, co *coordinator.Coordinator) {
 		wait := n.cfg.AnnounceInterval
 		for _, addr := range n.cfg.StaticPeers {
 			n.maybeDial(ctx, co, addr, nil)
+		}
+		if co.PeerCount() == 0 {
+			for _, addr := range n.cfg.HintPeers {
+				n.maybeDial(ctx, co, addr, nil)
+			}
 		}
 		trackerOK := true
 		if client != nil {
