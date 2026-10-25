@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -151,6 +152,8 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	maxPeers := fs.Int("max-peers", 50, "max connected peers")
 	picker := fs.String("picker", "rarest", "piece picker: "+strings.Join(scheduler.Pickers, ", "))
 	selector := fs.String("selector", "adaptive", "peer selector: "+strings.Join(scheduler.Selectors, ", "))
+	explore := fs.Float64("explore", scheduler.DefaultExplore, "adaptive selector: fraction of decisions spent on the least-sampled peer")
+	exploreNew := fs.Bool("explore-new-only", false, "adaptive selector: explore only peers with fewer than 3 completed requests")
 	endgame := fs.Bool("endgame", true, "issue duplicate requests for overdue pieces near completion")
 	pex := fs.Duration("pex-interval", 30*time.Second, "peer exchange interval (0 disables peer exchange)")
 	replicas := fs.Int("replicas", 0, "keep this many verified copies of each held piece, counting ours (0 or 1: off)")
@@ -160,6 +163,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	progress := fs.Duration("progress", 2*time.Second, "progress report interval (0 disables)")
 	logLevel := fs.String("log-level", "info", "debug, info, warn, error")
 	logJSON := fs.Bool("log-json", false, "structured JSON logs")
+	statsOut := fs.String("stats-out", "", "write the final status as JSON to this file on exit")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -251,6 +255,12 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	if ccfg.Selector, err = scheduler.NewSelector(*selector, *seed); err != nil {
 		return err
 	}
+	if a, ok := ccfg.Selector.(*scheduler.AdaptivePeer); ok {
+		if *explore < 0 || *explore > 1 {
+			return fmt.Errorf("-explore must be in [0, 1]")
+		}
+		a.Explore, a.ExploreNewOnly = *explore, *exploreNew
+	}
 	co := coordinator.New(m, st, have, n.ID(), ccfg, n.Logger())
 	n.AddSwarm(co)
 	if *tracker == "" && len(peers) == 0 {
@@ -276,6 +286,11 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	<-runCtx.Done()
 	cancel()
 	wg.Wait()
+	if *statsOut != "" {
+		if err := writeStats(*statsOut, co.Status()); err != nil {
+			log.Error("writing -stats-out failed", "err", err)
+		}
+	}
 
 	select {
 	case <-co.Complete():
@@ -286,6 +301,19 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 		s := co.Status()
 		return fmt.Errorf("interrupted with %d/%d pieces", s.Have, s.Pieces)
 	}
+}
+
+// writeStats writes s as JSON via a temporary file, so readers never see a partial file.
+func writeStats(path string, s *coordinator.Status) error {
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // dbJournal records coordinator progress in the state database.

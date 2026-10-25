@@ -1,0 +1,32 @@
+{
+  "name": "selection-heterogeneous",
+  "description": "Peer-selection comparison. 10 seeds with very different upload rate (2–100 Mbit/s) and one-way delay (5–200 ms) serve 2 downloaders on fast links. With 10 seeds × 4 requests per peer = 40 slots against a 32-request budget, the selector has real choices to make. Identical workload and seeds for every variant; only -selector differs.",
+  "file_size": "64MiB",
+  "piece_size": "256KiB",
+  "data_seed": 11,
+  "timeout": "180s",
+  "common_args": ["-picker", "rarest"],
+  "peers": [
+    {"name": "s1",  "role": "seed", "link": {"rate": "100mbit", "delay": "5ms"}},
+    {"name": "s2",  "role": "seed", "link": {"rate": "60mbit",  "delay": "10ms"}},
+    {"name": "s3",  "role": "seed", "link": {"rate": "40mbit",  "delay": "20ms"}},
+    {"name": "s4",  "role": "seed", "link": {"rate": "20mbit",  "delay": "40ms"}},
+    {"name": "s5",  "role": "seed", "link": {"rate": "20mbit",  "delay": "80ms"}},
+    {"name": "s6",  "role": "seed", "link": {"rate": "10mbit",  "delay": "20ms"}},
+    {"name": "s7",  "role": "seed", "link": {"rate": "8mbit",   "delay": "100ms"}},
+    {"name": "s8",  "role": "seed", "link": {"rate": "5mbit",   "delay": "150ms"}},
+    {"name": "s9",  "role": "seed", "link": {"rate": "4mbit",   "delay": "60ms"}},
+    {"name": "s10", "role": "seed", "link": {"rate": "2mbit",   "delay": "200ms"}},
+    {"name": "d1",  "role": "get",  "link": {"rate": "400mbit", "delay": "2ms"}, "start_at": "1s"},
+    {"name": "d2",  "role": "get",  "link": {"rate": "400mbit", "delay": "2ms"}, "start_at": "1s"}
+  ],
+  "variants": [
+    {"name": "random",   "args": ["-selector", "random"]},
+    {"name": "fastest",  "args": ["-selector", "fastest"]},
+    {"name": "adaptive", "args": ["-selector", "adaptive"]},
+    {"name": "adaptive-noexplore", "args": ["-selector", "adaptive", "-explore", "0"]},
+    {"name": "adaptive-explore-new", "args": ["-selector", "adaptive", "-explore-new-only"]},
+    {"name": "fastest-mpp16", "args": ["-selector", "fastest", "-max-per-peer", "16"]},
+    {"name": "adaptive-noexplore-mpp16", "args": ["-selector", "adaptive", "-explore", "0", "-max-per-peer", "16"]}
+  ]
+}

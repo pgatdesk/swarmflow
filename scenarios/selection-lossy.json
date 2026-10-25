@@ -1,0 +1,30 @@
+{
+  "name": "selection-lossy",
+  "description": "As selection-heterogeneous, but the two highest-capacity seeds have packet loss on their links (s1: 3 %, s2: 1 %, both directions). Their nominal rate is high but TCP goodput collapses; measures whether selectors follow measured delivery rather than nominal capacity.",
+  "file_size": "64MiB",
+  "piece_size": "256KiB",
+  "data_seed": 11,
+  "timeout": "180s",
+  "common_args": ["-picker", "rarest"],
+  "peers": [
+    {"name": "s1",  "role": "seed", "link": {"rate": "100mbit", "delay": "5ms", "loss": "3"}},
+    {"name": "s2",  "role": "seed", "link": {"rate": "60mbit",  "delay": "10ms", "loss": "1"}},
+    {"name": "s3",  "role": "seed", "link": {"rate": "40mbit",  "delay": "20ms"}},
+    {"name": "s4",  "role": "seed", "link": {"rate": "20mbit",  "delay": "40ms"}},
+    {"name": "s5",  "role": "seed", "link": {"rate": "20mbit",  "delay": "80ms"}},
+    {"name": "s6",  "role": "seed", "link": {"rate": "10mbit",  "delay": "20ms"}},
+    {"name": "s7",  "role": "seed", "link": {"rate": "8mbit",   "delay": "100ms"}},
+    {"name": "s8",  "role": "seed", "link": {"rate": "5mbit",   "delay": "150ms"}},
+    {"name": "s9",  "role": "seed", "link": {"rate": "4mbit",   "delay": "60ms"}},
+    {"name": "s10", "role": "seed", "link": {"rate": "2mbit",   "delay": "200ms"}},
+    {"name": "d1",  "role": "get",  "link": {"rate": "400mbit", "delay": "2ms"}, "start_at": "1s"},
+    {"name": "d2",  "role": "get",  "link": {"rate": "400mbit", "delay": "2ms"}, "start_at": "1s"}
+  ],
+  "variants": [
+    {"name": "random",   "args": ["-selector", "random"]},
+    {"name": "fastest",  "args": ["-selector", "fastest"]},
+    {"name": "adaptive", "args": ["-selector", "adaptive"]},
+    {"name": "adaptive-noexplore", "args": ["-selector", "adaptive", "-explore", "0"]},
+    {"name": "adaptive-explore-new", "args": ["-selector", "adaptive", "-explore-new-only"]}
+  ]
+}

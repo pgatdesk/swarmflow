@@ -1,0 +1,38 @@
+{
+  "name": "selection-flaky",
+  "description": "As selection-heterogeneous, but the fastest seed (s1) is flaky: its link goes down for 2.5 s at 2 s, 6 s and 10 s (up again at 4.5 s, 8.5 s, 12.5 s). When up it is the best source, so its measured throughput stays high; only timeouts and reliability reveal the outages. This is the condition the adaptive selector's reliability term targets.",
+  "file_size": "64MiB",
+  "piece_size": "256KiB",
+  "data_seed": 11,
+  "timeout": "180s",
+  "common_args": ["-picker", "rarest"],
+  "peers": [
+    {"name": "s1",  "role": "seed", "link": {"rate": "100mbit", "delay": "5ms"}},
+    {"name": "s2",  "role": "seed", "link": {"rate": "60mbit",  "delay": "10ms"}},
+    {"name": "s3",  "role": "seed", "link": {"rate": "40mbit",  "delay": "20ms"}},
+    {"name": "s4",  "role": "seed", "link": {"rate": "20mbit",  "delay": "40ms"}},
+    {"name": "s5",  "role": "seed", "link": {"rate": "20mbit",  "delay": "80ms"}},
+    {"name": "s6",  "role": "seed", "link": {"rate": "10mbit",  "delay": "20ms"}},
+    {"name": "s7",  "role": "seed", "link": {"rate": "8mbit",   "delay": "100ms"}},
+    {"name": "s8",  "role": "seed", "link": {"rate": "5mbit",   "delay": "150ms"}},
+    {"name": "s9",  "role": "seed", "link": {"rate": "4mbit",   "delay": "60ms"}},
+    {"name": "s10", "role": "seed", "link": {"rate": "2mbit",   "delay": "200ms"}},
+    {"name": "d1",  "role": "get",  "link": {"rate": "400mbit", "delay": "2ms"}, "start_at": "1s"},
+    {"name": "d2",  "role": "get",  "link": {"rate": "400mbit", "delay": "2ms"}, "start_at": "1s"}
+  ],
+  "events": [
+    {"at": "2s",    "peer": "s1", "action": "link-down"},
+    {"at": "4.5s",  "peer": "s1", "action": "link-up"},
+    {"at": "6s",    "peer": "s1", "action": "link-down"},
+    {"at": "8.5s",  "peer": "s1", "action": "link-up"},
+    {"at": "10s",   "peer": "s1", "action": "link-down"},
+    {"at": "12.5s", "peer": "s1", "action": "link-up"}
+  ],
+  "variants": [
+    {"name": "random",   "args": ["-selector", "random"]},
+    {"name": "fastest",  "args": ["-selector", "fastest"]},
+    {"name": "adaptive", "args": ["-selector", "adaptive"]},
+    {"name": "adaptive-noexplore", "args": ["-selector", "adaptive", "-explore", "0"]},
+    {"name": "adaptive-explore-new", "args": ["-selector", "adaptive", "-explore-new-only"]}
+  ]
+}

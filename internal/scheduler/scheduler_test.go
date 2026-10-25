@@ -128,6 +128,28 @@ func TestAdaptiveExplorationMeasuresNewPeers(t *testing.T) {
 	}
 }
 
+func TestAdaptiveExploreNewOnlyStopsOnceMeasured(t *testing.T) {
+	a := NewAdaptivePeer(3, 0.5)
+	a.ExploreNewOnly = true
+	slow := cand(2, 0.1e6, 0, 1, 0, 0)
+	fast := cand(1, 10e6, 0, 1, 0, 50)
+	explored := 0
+	for range 1000 {
+		if a.Select(0, 1<<18, []Candidate{fast, slow}) == 1 {
+			explored++
+		}
+	}
+	if explored < 400 {
+		t.Fatalf("unmeasured peer explored only %d/1000 times", explored)
+	}
+	slow.Samples, slow.HasThroughput = NewPeerSamples, true
+	for range 1000 {
+		if a.Select(0, 1<<18, []Candidate{fast, slow}) == 1 {
+			t.Fatal("measured slow peer still chosen for exploration")
+		}
+	}
+}
+
 func TestEndgameOverdue(t *testing.T) {
 	p := DefaultEndgame()
 	in := []InFlight{

@@ -42,9 +42,20 @@ type Status struct {
 	// cannot finish until a source for them (re)appears.
 	Unavailable int               `json:"unavailable_pieces"`
 	Replication ReplicationStatus `json:"replication"`
-	StartedAt   time.Time         `json:"started_at"`
-	FinishedAt  time.Time         `json:"finished_at,omitzero"`
-	Peers       []PeerStatus      `json:"peers"`
+	// Sources lists every peer we accepted a (non-duplicate) piece from,
+	// including peers that have since disconnected, in first-contribution order.
+	Sources    []SourceStatus `json:"sources"`
+	StartedAt  time.Time      `json:"started_at"`
+	FinishedAt time.Time      `json:"finished_at,omitzero"`
+	Peers      []PeerStatus   `json:"peers"`
+}
+
+// SourceStatus is one peer's cumulative contribution to our download.
+type SourceStatus struct {
+	ID     string `json:"id"`
+	Addr   string `json:"addr"` // listen address as observed by us
+	Pieces int    `json:"pieces"`
+	Bytes  int64  `json:"bytes"`
 }
 
 type PeerStatus struct {
@@ -109,6 +120,9 @@ func (co *Coordinator) publishStatus(now time.Time) {
 		Complete: co.have.Complete(), Endgame: co.inEndgame,
 		Picker: co.cfg.Picker.Name(), Selector: co.cfg.Selector.Name(), Counters: co.counters,
 		StartedAt: co.started, FinishedAt: co.finished,
+	}
+	for _, id := range co.contribOrder {
+		s.Sources = append(s.Sources, *co.contrib[id])
 	}
 	for _, p := range co.peerList {
 		st := p.stats

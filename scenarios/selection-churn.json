@@ -1,0 +1,35 @@
+{
+  "name": "selection-churn",
+  "description": "As selection-heterogeneous, but the fastest seed (s1) is killed with SIGKILL 3 s in, and the second-fastest (s2) loses its link from 3 s to 6 s (link down, then back up: a transient failure). Measures whether each selector recovers when its preferred peers fail.",
+  "file_size": "64MiB",
+  "piece_size": "256KiB",
+  "data_seed": 11,
+  "timeout": "180s",
+  "common_args": ["-picker", "rarest"],
+  "peers": [
+    {"name": "s1",  "role": "seed", "link": {"rate": "100mbit", "delay": "5ms"}},
+    {"name": "s2",  "role": "seed", "link": {"rate": "60mbit",  "delay": "10ms"}},
+    {"name": "s3",  "role": "seed", "link": {"rate": "40mbit",  "delay": "20ms"}},
+    {"name": "s4",  "role": "seed", "link": {"rate": "20mbit",  "delay": "40ms"}},
+    {"name": "s5",  "role": "seed", "link": {"rate": "20mbit",  "delay": "80ms"}},
+    {"name": "s6",  "role": "seed", "link": {"rate": "10mbit",  "delay": "20ms"}},
+    {"name": "s7",  "role": "seed", "link": {"rate": "8mbit",   "delay": "100ms"}},
+    {"name": "s8",  "role": "seed", "link": {"rate": "5mbit",   "delay": "150ms"}},
+    {"name": "s9",  "role": "seed", "link": {"rate": "4mbit",   "delay": "60ms"}},
+    {"name": "s10", "role": "seed", "link": {"rate": "2mbit",   "delay": "200ms"}},
+    {"name": "d1",  "role": "get",  "link": {"rate": "400mbit", "delay": "2ms"}, "start_at": "1s"},
+    {"name": "d2",  "role": "get",  "link": {"rate": "400mbit", "delay": "2ms"}, "start_at": "1s"}
+  ],
+  "events": [
+    {"at": "3s", "peer": "s1", "action": "kill"},
+    {"at": "3s", "peer": "s2", "action": "link-down"},
+    {"at": "6s", "peer": "s2", "action": "link-up"}
+  ],
+  "variants": [
+    {"name": "random",   "args": ["-selector", "random"]},
+    {"name": "fastest",  "args": ["-selector", "fastest"]},
+    {"name": "adaptive", "args": ["-selector", "adaptive"]},
+    {"name": "adaptive-noexplore", "args": ["-selector", "adaptive", "-explore", "0"]},
+    {"name": "adaptive-explore-new", "args": ["-selector", "adaptive", "-explore-new-only"]}
+  ]
+}

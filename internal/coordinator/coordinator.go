@@ -199,6 +199,9 @@ type Coordinator struct {
 	proofJobs    chan proofJob
 	proofResults chan proofResult
 	unavailable  int
+	// contrib accumulates what each peer contributed, kept after it disconnects.
+	contrib      map[protocol.PeerID]*SourceStatus
+	contribOrder []protocol.PeerID
 	started      time.Time
 	finished     time.Time
 	lastStatus   time.Time
@@ -227,6 +230,7 @@ func New(m *manifest.Manifest, st *store.Store, have bitfield.Bitfield, self pro
 		downloading: st.Writable() && !cfg.ReplicaOnly,
 		wanted:      bitfield.New(n),
 		repl:        newReplication(n),
+		contrib:     make(map[protocol.PeerID]*SourceStatus),
 		// Bounded: a busy proof worker drops challenge answers rather than
 		// queueing disk reads without limit.
 		proofJobs:    make(chan proofJob, 64),
@@ -614,6 +618,14 @@ func (co *Coordinator) onPiece(p *peer, m protocol.Piece, now time.Time) {
 	p.piecesFrom++
 	p.bytesFrom += int64(len(m.Data))
 	co.counters.BytesDown += int64(len(m.Data))
+	src := co.contrib[p.id]
+	if src == nil {
+		src = &SourceStatus{ID: p.id.Short(), Addr: p.c.ListenAddr().String()}
+		co.contrib[p.id] = src
+		co.contribOrder = append(co.contribOrder, p.id)
+	}
+	src.Pieces++
+	src.Bytes += int64(len(m.Data))
 }
 
 func (co *Coordinator) onReject(p *peer, m protocol.Reject, now time.Time) {

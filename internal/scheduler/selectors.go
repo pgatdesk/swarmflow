@@ -81,8 +81,15 @@ func (FastestPeer) Select(_, _ int, cands []Candidate) int {
 // picks the least-sampled candidate so new or idle peers get measured.
 type AdaptivePeer struct {
 	Explore float64
-	rng     *rand.Rand
+	// ExploreNewOnly limits exploration to candidates with fewer than
+	// NewPeerSamples completed requests, so measuring a slow peer costs a few
+	// pieces once instead of a fixed fraction of all decisions forever.
+	ExploreNewOnly bool
+	rng            *rand.Rand
 }
+
+// NewPeerSamples is the history below which a peer counts as unmeasured for ExploreNewOnly.
+const NewPeerSamples = 3
 
 func NewAdaptivePeer(seed uint64, explore float64) *AdaptivePeer {
 	return &AdaptivePeer{Explore: explore, rng: rand.New(rand.NewPCG(seed, 0xada9))}
@@ -98,7 +105,9 @@ func (a *AdaptivePeer) Select(_, size int, cands []Candidate) int {
 				least = i
 			}
 		}
-		return least
+		if !a.ExploreNewOnly || cands[least].Samples < NewPeerSamples {
+			return least
+		}
 	}
 	tp, rtt := Priors(cands)
 	best, bestCost := 0, math.Inf(1)
