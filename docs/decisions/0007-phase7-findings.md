@@ -25,8 +25,17 @@ of pieces.
 `-distribute` the seed uploaded **1.00 copies**, left, and **4/4 downloaders completed**. With
 normal seeding it uploaded **1.38 copies** and **0/4 completed**, with 2–8 pieces lost.
 
-**Real-network results:** extra scenario 13 and scenario 02 (`distribute` variants); see the
-benchmark report.
+**Real-network results** (extra scenario 13, 5 trials per variant):
+- Normal seeding: 0/40 downloaders completed.
+- `-distribute` with tail stealing:
+  - **40/40** when downloaders keep seeding 60 s after finishing;
+  - 35/40 when they leave at once ("hit and run"). The 5 failures are the last straggler of each
+    trial, whose sources left.
+- Scenario 02, seed stays: no slowdown (30.8 s vs 31.4 s).
+
+**Tail stealing** (added after the first lab run left 1 piece missing in 2 of 5 trials): when
+nothing is unsent, revealed pieces that their holder has not requested within 200 ms move to an
+idle peer.
 
 **Side effect:** while a seed distributes, downloaders see the not-yet-revealed pieces as having
 "no source" (`unavailable_pieces` > 0, `sources_lost` events). That is expected in this mode.

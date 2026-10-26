@@ -44,7 +44,42 @@ events, sources, failures, measured durations) and raw per-trial JSON are in
   VmHWM.
 - CPU time was 0.3–2.0 s per downloader run.
 
-## Extra: early seed departure (validates decision 0003)
+## Extra: early seed departure, fixed by seed-side distribution (decision 0007)
+
+**Setup:** extra scenario 13, real emulated network, 5 trials per variant. One 40 Mbit/s seed
+and 8 downloaders with 10 Mbit/s uplinks. The seed leaves after 20 s.
+
+| seed behaviour | downloaders leave when done ("hit and run") | downloaders keep seeding 60 s (`-seed-for`) |
+|---|---|---|
+| normal seeding (with or without the upload cap) | **0/40** completed; the swarm held 213–227 of 256 pieces | **0/40**; 216–221 of 256 |
+| `-distribute` (first version) | 26/40 | 24/40; 3 of 5 trials complete, 2 stuck at 255/256 |
+| **`-distribute` with tail stealing** | **35/40**: 7 of 8 in every trial | **40/40: all downloaders complete in all 5 trials; slowest ~70–73 s** |
+
+**Why distribution works:** the seed reveals distinct never-sent pieces to each peer and
+repeats only pieces that were not acknowledged, so every piece leaves the seed once before any
+is sent twice. In-process, the seed needed exactly 1.00 copies.
+
+**Tail stealing:** without it, the last never-sent pieces could sit revealed at a busy
+downloader while others were idle, and the seed left with 1 piece missing.
+
+**The remaining hit-and-run failures are outside the seed's control.** All pieces reached the
+swarm, but downloaders that finish first leave at once and take pieces with the last
+straggler's only sources.
+
+**Normal case unaffected:** when the seed stays (scenario 02), distribution took 30.8 s vs
+31.4 s for normal rarest-first seeding, and the seed uploaded 2.0–2.1 copies instead of
+2.2–2.7.
+
+**Data integrity note:** in one hit-and-run trial a downloader's completion time reads 2,922 s
+in a 200 s trial. That is a WSL clock correction after the host slept, so its timings are
+excluded; its completion counts are kept.
+
+**Raw data:**
+- first version: [extra/13-seed-departs.json](extra/13-seed-departs.json) and
+  [extra/seed-for/](extra/seed-for/);
+- tail-stealing version: [extra/tail/](extra/tail/).
+
+## Extra: early seed departure and the upload cap (decision 0003)
 
 **Setup:** one 40 Mbit/s seed and 8 downloaders with 10 Mbit/s uplinks. The seed leaves after
 20 s.
@@ -76,8 +111,10 @@ events, sources, failures, measured durations) and raw per-trial JSON are in
 
 ## Things that did not go as designed (kept in the report on purpose)
 
-1. **Early seed departure loses 11–16% of the file** (extra 13), on real networks as in
-   simulation, and the upload cap does not fix it. Open: decision 0007.
+1. **Early seed departure lost 11–16% of the file** (extra 13), on real networks as in
+   simulation, and the upload cap did not fix it.
+   - **Resolved by `seed -distribute`** (decision 0007): 40/40 completions when downloaders
+     linger, against 0/40 with normal seeding.
 2. **Request depth.** The Phase 5 hypothesis that deeper pipelines help at high RTT did not
    hold: they were slower, because more requests queue behind TCP's congestion window and
    spread load less evenly.
