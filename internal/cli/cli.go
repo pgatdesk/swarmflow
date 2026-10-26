@@ -174,6 +174,8 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	statsOut := fs.String("stats-out", "", "write the final status as JSON to this file on exit")
 	eventsOut := fs.String("events-out", "", "write the event log as JSON to this file on exit")
 	memProfile := fs.String("memprofile", "", "write a Go heap profile to this file on exit (diagnostics)")
+	distribute := fs.Bool("distribute", false, "seed: reveal distinct pieces to each peer and resend only unacknowledged ones until every piece has left this seed (for seeds that may leave early)")
+	distWindow := fs.Int("distribute-window", 8, "seed -distribute: unacknowledged pieces revealed to each peer at a time")
 	noVerify := fs.Bool("no-verify", false, "seed: skip the startup hash check and serve the file as complete (receivers still verify every piece)")
 	apiListen := fs.String("api-listen", "127.0.0.1:0", "monitoring API address (/metrics, /api/status, /api/events); empty disables")
 	maxUp := fs.String("max-upload-rate", "0", "cap total upload payload per second, e.g. 2MiB (0: unlimited)")
@@ -266,6 +268,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	ccfg.MaxOutstanding, ccfg.MaxPerPeer, ccfg.UploadSlots = *maxOut, *maxPerPeer, *uploadSlots
 	ccfg.UploadQueueCap, ccfg.Journal, ccfg.PEXInterval = *uploadQueue, journal, *pex
 	ccfg.Replication.Factor = *replicas
+	ccfg.Distribute.Enabled, ccfg.Distribute.Window = *distribute, *distWindow
 	if mode == "replica" {
 		ccfg.ReplicaOnly, ccfg.Replication.Accept, ccfg.Replication.Budget = true, true, budget
 	}

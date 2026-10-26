@@ -76,6 +76,8 @@ type Config struct {
 	MaxUploadRate float64
 	// Resume, if set, is reported in Status (what was recovered at startup).
 	Resume *ResumeInfo
+	// Distribute enables seed-side Selective-Repeat distribution (decision 0007).
+	Distribute DistributeConfig
 }
 
 // Journal durably records download progress. PiecePersisted is called from a
@@ -110,6 +112,7 @@ func DefaultConfig() Config {
 		Stats:             peerstats.DefaultConfig(),
 		PEXInterval:       30 * time.Second,
 		Replication:       DefaultReplication(),
+		Distribute:        DefaultDistribute(),
 	}
 }
 
@@ -159,6 +162,8 @@ type peer struct {
 	pexSent, pexRecv   time.Time
 	acceptsReplicas    bool
 	declinedUntil      time.Time
+	// advertised is what a distributing seed has revealed to this peer.
+	advertised bitfield.Bitfield
 
 	piecesFrom, duplicates, unexpected int
 	bytesFrom                          int64
@@ -211,6 +216,7 @@ type Coordinator struct {
 	proofJobs    chan proofJob
 	proofResults chan proofResult
 	unavailable  int
+	dist         *distributor
 	// contrib accumulates what each peer contributed, kept after it disconnects.
 	contrib      map[protocol.PeerID]*SourceStatus
 	contribOrder []protocol.PeerID
@@ -255,6 +261,10 @@ func New(m *manifest.Manifest, st *store.Store, have bitfield.Bitfield, self pro
 		if have.Has(i) {
 			co.state[i] = stPersisted
 		}
+	}
+	co.dist = newDistributor(cfg.Distribute, n, uint64(self[0])<<8|uint64(self[1]), have.Complete() && !st.Writable())
+	if cfg.Distribute.Enabled && !co.dist.active {
+		co.log.Warn("-distribute ignored: only a seed holding the complete file distributes")
 	}
 	commit := func(i int, data []byte) error {
 		if err := st.WritePiece(i, data); err != nil { // flushed before returning
@@ -353,6 +363,7 @@ func (co *Coordinator) Run(ctx context.Context) error {
 		case now := <-tick.C:
 			co.checkTimeouts(now)
 			co.replicationTimeouts(now)
+			co.distTimeouts(now)
 			co.pingPeers(now)
 			co.replicate(now)
 			if now.Sub(co.lastStatus) >= statusInterval {
@@ -423,7 +434,7 @@ func (co *Coordinator) onConn(ctx context.Context, c *conn.Conn) {
 	co.peerCount.Store(int32(len(co.peers)))
 	go p.up.run(upCtx)
 	c.Start(ctx, co.inbound)
-	c.SendControl(protocol.Bitfield{Bits: co.have.Bytes()})
+	c.SendControl(protocol.Bitfield{Bits: co.initialBitfield(p)})
 	co.sendPEX(p, time.Now())
 	co.log.Info("peer connected", "peer", id.Short(), "addr", c.RemoteAddr().String(), "outbound", c.Outbound())
 	dir := "inbound"
@@ -511,7 +522,8 @@ func (co *Coordinator) removePeer(p *peer, err error) {
 	co.connected.Delete(p.id)
 	co.peerCount.Store(int32(len(co.peers)))
 	p.stopUpload()
-	co.forgetReplicas(p.id) // its verified copies no longer count
+	co.forgetReplicas(p.id)          // its verified copies no longer count
+	co.distRelease(p.id, time.Now()) // repeat only the pieces it had not acknowledged
 	reassigned := len(p.outstanding)
 	for _, r := range p.outstanding {
 		co.finishRequest(r)
@@ -570,8 +582,10 @@ func (co *Coordinator) onMessage(p *peer, m protocol.Message, now time.Time) {
 		for i := range n {
 			if bf.Has(i) {
 				co.avail[i]++
+				co.distAck(i, now) // a piece this peer already holds has left the seed
 			}
 		}
+		co.fillWindow(p, now)
 	case protocol.Have:
 		i := int(m.Piece)
 		if i >= n {
@@ -583,6 +597,7 @@ func (co *Coordinator) onMessage(p *peer, m protocol.Message, now time.Time) {
 			co.avail[i]++
 		}
 		co.onReplicaHave(p, i)
+		co.distAck(i, now) // the acknowledgement in distribution mode
 	case protocol.Request:
 		co.onRequest(p, m)
 	case protocol.Cancel:

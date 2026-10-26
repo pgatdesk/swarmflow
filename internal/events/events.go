@@ -26,6 +26,9 @@ const (
 	UnderReplicated   = "under_replicated"
 	ReplicationTarget = "replication_target_reached"
 	ProofFailed       = "proof_failed"
+	// Seed-side distribution (decision 0007).
+	DistributionRepeat   = "distribution_repeat"
+	DistributionComplete = "distribution_complete"
 )
 
 type Event struct {

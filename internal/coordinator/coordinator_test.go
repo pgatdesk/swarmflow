@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
+	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -77,6 +79,107 @@ func (fp *fakePeer) nextRequest(d time.Duration) (protocol.Request, bool) {
 			return protocol.Request{}, false
 		}
 	}
+}
+
+// haves collects HAVE announcements the coordinator sends this peer until
+// none arrives for d.
+func (fp *fakePeer) haves(d time.Duration) []int {
+	var out []int
+	for {
+		select {
+		case m, ok := <-fp.in:
+			if !ok {
+				return out
+			}
+			if h, isHave := m.(protocol.Have); isHave {
+				out = append(out, int(h.Piece))
+			}
+		case <-time.After(d):
+			return out
+		}
+	}
+}
+
+func TestDistributeRevealsDisjointWindowsAndRepeatsOnlyLosses(t *testing.T) {
+	const pieceSize, pieces = 16 << 10, 24
+	data := dataset.Bytes(pieces*pieceSize, 4)
+	m, _ := manifest.Build(bytes.NewReader(data), "f.bin", int64(len(data)), pieceSize)
+	src := filepath.Join(t.TempDir(), "f.bin")
+	os.WriteFile(src, data, 0o644)
+	st, err := store.OpenComplete(src, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	all := bitfield.New(pieces)
+	for i := range pieces {
+		all.Set(i)
+	}
+	cfg := DefaultConfig()
+	cfg.Distribute = DistributeConfig{Enabled: true, Window: 4, AckTimeout: time.Hour}
+	cfg.PingInterval, cfg.PEXInterval = time.Hour, 0
+	co := New(m, st, all, protocol.PeerID{0xFF}, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- co.Run(ctx) }()
+	defer func() { cancel(); <-done }()
+
+	empty := bitfield.New(pieces)
+	a := connectFake(t, ctx, co, 0x0A, empty)
+	b := connectFake(t, ctx, co, 0x0B, empty)
+	ga, gb := a.haves(300*time.Millisecond), b.haves(300*time.Millisecond)
+	if len(ga) != 4 || len(gb) != 4 {
+		t.Fatalf("revealed %v to a and %v to b; want windows of 4", ga, gb)
+	}
+	for _, i := range ga {
+		if slices.Contains(gb, i) {
+			t.Fatalf("piece %d revealed to both peers", i)
+		}
+	}
+	// a acknowledges one piece: exactly one new, never-revealed piece follows.
+	a.send(protocol.Have{Piece: uint32(ga[0])})
+	more := a.haves(300 * time.Millisecond)
+	if len(more) != 1 || slices.Contains(ga, more[0]) || slices.Contains(gb, more[0]) {
+		t.Fatalf("after one ack a got %v", more)
+	}
+	// b leaves without acknowledging: its 4 pieces are the only ones repeated,
+	// and they go out first once a has room in its window.
+	b.nc.Close()
+	if got := a.haves(300 * time.Millisecond); len(got) != 0 {
+		t.Fatalf("a's window was full but it was given %v", got)
+	}
+	for _, i := range append(ga[1:], more...) {
+		a.send(protocol.Have{Piece: uint32(i)})
+	}
+	again := a.haves(500 * time.Millisecond)
+	if !slices.Equal(sortedCopy(again), sortedCopy(gb)) {
+		t.Fatalf("after b left and a acknowledged its window, a was given %v; want b's unacknowledged %v first", again, gb)
+	}
+	// Once every piece has been acknowledged somewhere, everything is advertised.
+	for i := range pieces {
+		a.send(protocol.Have{Piece: uint32(i)}) // a now holds everything (duplicates are harmless)
+	}
+	waitUntil(t, 2*time.Second, func() bool {
+		co.publishStatus(time.Now())
+		d := co.Status().Distribution
+		return d != nil && !d.Active && d.Acked == pieces && d.Repeated == 4
+	})
+}
+
+func sortedCopy(xs []int) []int {
+	out := slices.Clone(xs)
+	slices.Sort(out)
+	return out
+}
+
+func waitUntil(t *testing.T, d time.Duration, cond func() bool) {
+	t.Helper()
+	for end := time.Now().Add(d); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
+		if cond() {
+			return
+		}
+	}
+	t.Fatal("condition not reached")
 }
 
 // firstPeer always selects the first candidate (connection order).

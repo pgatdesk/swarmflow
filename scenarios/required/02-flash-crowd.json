@@ -108,6 +108,18 @@
                                       "sequential"
                                   ],
                          "name":  "sequential"
+                     },
+                     {
+                         "name":  "rarest-distribute",
+                         "args":  [
+                                      "-picker",
+                                      "rarest"
+                                  ],
+                         "role_args":  {
+                                           "seed":  [
+                                                        "-distribute"
+                                                    ]
+                                       }
                      }
                  ]
 }

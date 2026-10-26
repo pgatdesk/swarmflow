@@ -47,6 +47,8 @@ type Status struct {
 	// cannot finish until a source for them (re)appears.
 	Unavailable int               `json:"unavailable_pieces"`
 	Replication ReplicationStatus `json:"replication"`
+	// Distribution is set for seeds started with -distribute.
+	Distribution *DistributionStatus `json:"distribution,omitempty"`
 	// Sources lists every peer we accepted a (non-duplicate) piece from,
 	// including peers that have since disconnected, in first-contribution order.
 	Sources   []SourceStatus `json:"sources"`
@@ -141,7 +143,7 @@ func (co *Coordinator) countUnavailable() int {
 func (co *Coordinator) publishStatus(now time.Time) {
 	co.lastStatus = now
 	s := &Status{
-		Unavailable: co.countUnavailable(), Replication: co.replicationStatus(now),
+		Unavailable: co.countUnavailable(), Replication: co.replicationStatus(now), Distribution: co.distributionStatus(),
 		SwarmID: co.m.ID().String(), Name: co.m.Name(), Size: co.m.Size(), Pieces: co.m.NumPieces(),
 		Have: co.have.Count(), Outstanding: len(co.reqs), Verifying: co.verifying,
 		UploadQueue: int(co.uploadQueued.Load()),

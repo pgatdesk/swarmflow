@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -604,6 +605,75 @@ func TestAllCopiesLostThenSourceReturns(t *testing.T) {
 	if u := d.co.Status().Unavailable; u != 0 {
 		t.Fatalf("unavailable=%d after completion", u)
 	}
+}
+
+// TestDistributeSurvivesEarlySeedDeparture: a seed that leaves after uploading
+// about 1.15 copies. With -distribute every piece leaves the seed once before
+// any is sent twice, so the downloaders can finish among themselves.
+func TestDistributeSurvivesEarlySeedDeparture(t *testing.T) {
+	run := func(t *testing.T, distribute bool) (completed int, unavailable int, copies float64) {
+		f := newFixture(t, 1<<20) // 64 pieces of 16 KiB
+		seed := f.start("seed", peerOpts{seedFile: f.writeSource("src.bin", nil),
+			listener: impaired(t, faultnet.Impairment{BytesPerSec: 512 << 10}),
+			ccfg: func(c *coordinator.Config) {
+				c.Distribute = coordinator.DistributeConfig{Enabled: distribute, Window: 8, AckTimeout: 20 * time.Second}
+			}})
+		var ds []*testPeer
+		for i := range 4 {
+			ds = append(ds, f.start(fmt.Sprintf("d%d", i), peerOpts{peers: []string{seed.addr()}}))
+		}
+		// Downloaders must trade with each other once the seed is gone.
+		for i, d := range ds {
+			for _, o := range ds[i+1:] {
+				go d.n.Dial(context.Background(), d.co, o.addr())
+			}
+		}
+		// The seed leaves after 1.15 copies, or once everyone is done if that comes first.
+		limit := int64(float64(f.m.Size()) * 1.15)
+		allDone := func() bool {
+			for _, d := range ds {
+				if !d.co.Status().Complete {
+					return false
+				}
+			}
+			return true
+		}
+		reached := false
+		for end := time.Now().Add(30 * time.Second); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
+			if seed.co.Status().BytesUp >= limit || allDone() {
+				reached = true
+				break
+			}
+		}
+		if !reached && distribute {
+			t.Fatal("distribution neither finished nor reached the departure point")
+		}
+		seed.cancel()
+		seed.wg.Wait()
+		copies = float64(seed.co.Status().BytesUp) / float64(f.m.Size())
+		end := time.Now().Add(5 * time.Second) // one shared deadline; a time.After channel fires only once
+		for _, d := range ds {
+			select {
+			case <-d.co.Complete():
+				completed++
+			case <-time.After(time.Until(end)):
+			}
+		}
+		for _, d := range ds {
+			unavailable = max(unavailable, d.co.Status().Unavailable)
+		}
+		return completed, unavailable, copies
+	}
+	got, missing, copies := run(t, true)
+	t.Logf("distribute: seed uploaded %.2f copies, then left; %d/4 downloaders completed", copies, got)
+	if got != 4 {
+		t.Fatalf("with -distribute only %d/4 completed (%d pieces had no source)", got, missing)
+	}
+	if copies > 1.10 {
+		t.Errorf("distribute sent %.2f copies; each piece should leave the seed about once", copies)
+	}
+	got, missing, copies = run(t, false)
+	t.Logf("normal seeding: seed uploaded %.2f copies, then left; %d/4 completed; up to %d pieces had no source", copies, got, missing)
 }
 
 func TestDownloaderFindsSeederThatStartsLater(t *testing.T) {
