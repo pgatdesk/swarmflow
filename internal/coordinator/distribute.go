@@ -54,6 +54,7 @@ type distributor struct {
 	order    []int             // order in which unsent pieces are handed out
 	next     int               // scan position in order
 	retry    []int             // pieces lost or timed out: handed out before untouched ones
+	asked    []bool            // the current owner has requested the piece from us
 	acked    int
 	repeated int // pieces re-assigned after their holder left or timed out
 }
@@ -66,6 +67,7 @@ func newDistributor(cfg DistributeConfig, n int, seed uint64, complete bool) *di
 	d.state = make([]distPiece, n)
 	d.owner = make([]protocol.PeerID, n)
 	d.since = make([]time.Time, n)
+	d.asked = make([]bool, n)
 	d.order = rand.New(rand.NewPCG(seed, 0xd157)).Perm(n)
 	return d
 }
@@ -101,7 +103,7 @@ func (co *Coordinator) fillWindow(p *peer, now time.Time) {
 		if d.state[i] != distUnsent || p.has.Has(i) {
 			return false
 		}
-		d.state[i], d.owner[i], d.since[i] = distAssigned, p.id, now
+		d.state[i], d.owner[i], d.since[i], d.asked[i] = distAssigned, p.id, now, false
 		if !p.advertised.Has(i) {
 			p.advertised.Set(i)
 			p.c.SendControl(protocol.Have{Piece: uint32(i)})
@@ -123,6 +125,32 @@ func (co *Coordinator) fillWindow(p *peer, now time.Time) {
 		i := d.order[d.next]
 		d.next = (d.next + 1) % len(d.order)
 		assign(i)
+	}
+	// Tail: nothing is unsent, but other peers hold revealed pieces they have
+	// not requested yet (their request depth is smaller than the window). Move
+	// such pieces to this idle peer so the seed's last pieces do not wait.
+	for i, s := range d.state {
+		if free == 0 {
+			break
+		}
+		if s != distAssigned || d.asked[i] || d.owner[i] == p.id || p.has.Has(i) || now.Sub(d.since[i]) < stealAfter {
+			continue
+		}
+		d.state[i] = distUnsent
+		d.repeated++
+		assign(i)
+	}
+}
+
+// stealAfter is how long a revealed piece may sit unrequested before the tail
+// rule moves it to an idle peer.
+const stealAfter = 200 * time.Millisecond
+
+// distRequested notes that a peer asked us for piece i.
+func (co *Coordinator) distRequested(p *peer, i int) {
+	d := co.dist
+	if d.active && d.state[i] == distAssigned && d.owner[i] == p.id {
+		d.asked[i] = true
 	}
 }
 

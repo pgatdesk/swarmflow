@@ -638,6 +638,7 @@ func (co *Coordinator) onRequest(p *peer, m protocol.Request) {
 		p.c.SendControl(protocol.Reject{ReqID: m.ReqID, Reason: protocol.RejectNotHave})
 		return
 	}
+	co.distRequested(p, i)
 	if (co.cfg.UploadQueueCap > 0 && int(co.uploadQueued.Load()) >= co.cfg.UploadQueueCap) || !p.up.enqueue(m) {
 		co.counters.BusySent++
 		p.c.SendControl(protocol.Reject{ReqID: m.ReqID, Reason: protocol.RejectBusy})

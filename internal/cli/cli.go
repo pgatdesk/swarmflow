@@ -168,6 +168,7 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	replicaBudget := fs.String("replica-budget", "0", "replica: max bytes to accept as replicas (0: unlimited)")
 	seed := fs.Uint64("seed", 0, "seed for randomized policies (0: derive from the random peer ID)")
 	exitOnComplete := fs.Bool("exit-on-complete", false, "get: exit once the download is complete")
+	seedFor := fs.Duration("seed-for", 0, "get -exit-on-complete: keep seeding this long after completing, then exit")
 	progress := fs.Duration("progress", 2*time.Second, "progress report interval (0 disables)")
 	logLevel := fs.String("log-level", "info", "debug, info, warn, error")
 	logJSON := fs.Bool("log-json", false, "structured JSON logs")
@@ -321,6 +322,13 @@ func cmdPeer(mode string, args []string, stderr io.Writer) error {
 	select {
 	case <-co.Complete():
 		if mode == "get" && *exitOnComplete {
+			if *seedFor > 0 {
+				log.Info("download complete; seeding before exit", "for", *seedFor)
+				select {
+				case <-time.After(*seedFor):
+				case <-ctx.Done():
+				}
+			}
 			cancel()
 		}
 	case <-ctx.Done():

@@ -1,6 +1,35 @@
 # 0007 — Phase 7 findings: request depth, and early seed departure
 
-Date: 2026-10-26. Status: **proposed, awaiting the owner's decision.**
+Date: 2026-10-26. Status: **decided by the owner.**
+- **A:** keep depth 4.
+- **B:** seed-side distribution in the style of Selective Repeat, as the owner proposed. It is
+  the super-seeding idea with ARQ semantics.
+
+## Outcome of B (implemented as `seed -distribute`)
+
+How the Selective Repeat model maps onto seeding:
+
+| Selective Repeat | seed distribution |
+|---|---|
+| frame | piece |
+| send different frames in parallel | each peer is revealed a window of *distinct*, never-sent pieces |
+| ACK | any peer announcing the piece (HAVE/BITFIELD) |
+| sender window | revealed but unacknowledged pieces per peer (`-distribute-window`, default 8 ≥ request depth 4) |
+| retransmit only lost frames | only pieces whose holder disconnected, or that went unacknowledged for 20 s, are re-assigned, ahead of untouched pieces |
+| done | once every piece has been acknowledged, the seed advertises everything and seeds normally |
+
+No protocol change was needed: peers only ever see a seed that appears to hold a moving handful
+of pieces.
+
+**Measured in-process** (`TestDistributeSurvivesEarlySeedDeparture`, 5 runs): with
+`-distribute` the seed uploaded **1.00 copies**, left, and **4/4 downloaders completed**. With
+normal seeding it uploaded **1.38 copies** and **0/4 completed**, with 2–8 pieces lost.
+
+**Real-network results:** extra scenario 13 and scenario 02 (`distribute` variants); see the
+benchmark report.
+
+**Side effect:** while a seed distributes, downloaders see the not-yet-revealed pieces as having
+"no source" (`unavailable_pieces` > 0, `sources_lost` events). That is expected in this mode.
 
 ## A. Per-peer request depth (follow-up to 0006)
 

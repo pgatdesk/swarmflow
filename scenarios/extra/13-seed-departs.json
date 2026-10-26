@@ -1,10 +1,10 @@
 {
     "name":  "13-seed-departs",
-    "description":  "Extra (validates decision 0003 on a real network): one 40 Mbit/s seed and eight downloaders with 10 Mbit/s uplinks. The seed leaves after 20 s (about 1.5 copies uploaded); downloaders can only finish if, between them, they already hold every piece. In simulation, without the upload admission cap, no downloader finished. The distribute variant runs the seed with -distribute (decision 0007).",
+    "description":  "Extra (validates decision 0003 on a real network): one 40 Mbit/s seed and eight downloaders with 10 Mbit/s uplinks. The seed leaves after 20 s (about 1.5 copies uploaded); downloaders can only finish if, between them, they already hold every piece. In simulation, without the upload admission cap, no downloader finished. The distribute variant runs the seed with -distribute (decision 0007). Variants ending in -seed-for keep each downloader seeding for 60 s after it completes (instead of leaving at once, \"hit and run\").",
     "file_size":  "64MiB",
     "piece_size":  "256KiB",
     "data_seed":  31,
-    "timeout":  "150s",
+    "timeout":  "200s",
     "peers":  [
                   {
                       "name":  "s1",
@@ -123,6 +123,31 @@
                          "name":  "distribute",
                          "args":  [
 
+                                  ],
+                         "role_args":  {
+                                           "seed":  [
+                                                        "-distribute"
+                                                    ]
+                                       }
+                     },
+                     {
+                         "name":  "cap16-seed-for",
+                         "args":  [
+                                      "-seed-for",
+                                      "60s"
+                                  ],
+                         "role_args":  {
+                                           "*":  [
+                                                     "-upload-queue",
+                                                     "16"
+                                                 ]
+                                       }
+                     },
+                     {
+                         "name":  "distribute-seed-for",
+                         "args":  [
+                                      "-seed-for",
+                                      "60s"
                                   ],
                          "role_args":  {
                                            "seed":  [
